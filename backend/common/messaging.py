@@ -41,88 +41,8 @@ class DummyMessaging(CloudMessaging):
         logger.info(f"[DUMMY MESSAGING] Deleted/Acknowledged message: {receipt_handle}")
         return True
 
-class SQSMessaging(CloudMessaging):
-    """AWS SQS Provider (compatible with LocalStack via AWS_ENDPOINT_URL)"""
-    def publish_message(self, message_data: dict) -> bool:
-        queue_url = os.getenv("AWS_SQS_QUEUE_URL")
-        if not queue_url:
-            logger.warning("AWS_SQS_QUEUE_URL not configured. Skipping SQS send.")
-            return False
-
-        try:
-            import boto3
-            message_body = json.dumps(message_data)
-
-            # Initialize client implicitly, pointing to LocalStack if endpoint is set
-            endpoint_url = os.getenv("AWS_ENDPOINT_URL")
-            sqs_client = boto3.client("sqs", endpoint_url=endpoint_url)
-
-            response = sqs_client.send_message(
-                QueueUrl=queue_url,
-                MessageBody=message_body
-            )
-            logger.info(f"Published to SQS: {response.get('MessageId')}")
-            return True
-        except Exception as e:
-            logger.error(f"SQS publish failed: {str(e)}")
-            return False
-
-    def receive_messages(self, wait_time_seconds: int = 10) -> list:
-        queue_url = os.getenv("AWS_SQS_QUEUE_URL")
-        if not queue_url:
-            logger.warning("AWS_SQS_QUEUE_URL not configured. Cannot poll SQS.")
-            return []
-
-        try:
-            import boto3
-            endpoint_url = os.getenv("AWS_ENDPOINT_URL")
-            sqs_client = boto3.client("sqs", endpoint_url=endpoint_url)
-            
-            response = sqs_client.receive_message(
-                QueueUrl=queue_url,
-                MaxNumberOfMessages=1,
-                WaitTimeSeconds=wait_time_seconds,
-                VisibilityTimeout=30
-            )
-
-            messages = response.get("Messages", [])
-            result = []
-            for m in messages:
-                try:
-                    body = json.loads(m["Body"])
-                    result.append({
-                        "id": m["MessageId"],
-                        "receipt_handle": m["ReceiptHandle"],
-                        "body": body
-                    })
-                except Exception as parse_err:
-                    logger.error(f"Failed to parse SQS message JSON: {str(parse_err)}")
-            return result
-        except Exception as e:
-            logger.error(f"Failed to poll SQS messages: {str(e)}")
-            return []
-
-    def delete_message(self, receipt_handle: str) -> bool:
-        queue_url = os.getenv("AWS_SQS_QUEUE_URL")
-        if not queue_url:
-            return False
-
-        try:
-            import boto3
-            endpoint_url = os.getenv("AWS_ENDPOINT_URL")
-            sqs_client = boto3.client("sqs", endpoint_url=endpoint_url)
-            sqs_client.delete_message(
-                QueueUrl=queue_url,
-                ReceiptHandle=receipt_handle
-            )
-            logger.info("Successfully deleted message from SQS.")
-            return True
-        except Exception as e:
-            logger.error(f"SQS delete_message failed: {str(e)}")
-            return False
-
 class GCPPubSubMessaging(CloudMessaging):
-    """GCP Pub/Sub Provider"""
+    """GCP Pub/Sub Provider (supports local Pub/Sub emulators via PUBSUB_EMULATOR_HOST)"""
     def publish_message(self, message_data: dict) -> bool:
         project_id = os.getenv("GCP_PROJECT_ID")
         topic_id = os.getenv("GCP_PUBSUB_TOPIC_ID")
@@ -132,6 +52,7 @@ class GCPPubSubMessaging(CloudMessaging):
 
         try:
             from google.cloud import pubsub_v1
+            # Client automatically detects and respects PUBSUB_EMULATOR_HOST environment variable
             publisher = pubsub_v1.PublisherClient()
             topic_path = publisher.topic_path(project_id, topic_id)
 
@@ -155,9 +76,11 @@ class GCPPubSubMessaging(CloudMessaging):
 
         try:
             from google.cloud import pubsub_v1
+            # Client automatically detects and respects PUBSUB_EMULATOR_HOST environment variable
             subscriber = pubsub_v1.SubscriberClient()
             subscription_path = subscriber.subscription_path(project_id, subscription_id)
 
+            # Synchronous pull with a deadline
             response = subscriber.pull(
                 request={"subscription": subscription_path, "max_messages": 1},
                 timeout=wait_time_seconds
@@ -187,9 +110,11 @@ class GCPPubSubMessaging(CloudMessaging):
 
         try:
             from google.cloud import pubsub_v1
+            # Client automatically detects and respects PUBSUB_EMULATOR_HOST environment variable
             subscriber = pubsub_v1.SubscriberClient()
             subscription_path = subscriber.subscription_path(project_id, subscription_id)
 
+            # Acknowledge the message to remove it from the subscription
             subscriber.acknowledge(
                 request={"subscription": subscription_path, "ack_ids": [receipt_handle]}
             )
@@ -201,10 +126,8 @@ class GCPPubSubMessaging(CloudMessaging):
 
 def get_messaging_provider() -> CloudMessaging:
     """Factory function returning the configured messaging driver"""
-    provider_name = os.getenv("MESSAGING_PROVIDER", "SQS").upper()
-    if provider_name == "GCP_PUBSUB":
-        return GCPPubSubMessaging()
-    elif provider_name == "DUMMY":
+    provider_name = os.getenv("MESSAGING_PROVIDER", "GCP_PUBSUB").upper()
+    if provider_name == "DUMMY":
         return DummyMessaging()
     else:
-        return SQSMessaging()
+        return GCPPubSubMessaging()

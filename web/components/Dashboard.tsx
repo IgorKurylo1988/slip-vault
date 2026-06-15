@@ -51,8 +51,8 @@ const Dashboard: React.FC<DashboardProps> = ({
             <div className="flex items-center gap-3">
               <div className="scale-75 origin-left"><AppLogo /></div>
               <div className="flex flex-col">
-                <h1 className="text-xl font-extrabold text-slate-800 tracking-tight leading-none">Wallet</h1>
-                <p className="text-slate-400 text-[10px] uppercase font-bold tracking-widest mt-1">Digital Vault</p>
+                <h1 className="text-xl font-extrabold text-slate-800 tracking-tight leading-none">Slip Vault</h1>
+                <p className="text-slate-400 text-[10px] uppercase font-bold tracking-widest mt-1">Digital Receipt Vault</p>
               </div>
             </div>
             

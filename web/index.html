@@ -1,40 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>CrediZik</title>
-    <link rel="icon" type="image/png" href="assets/image.png" />
-    <link rel="apple-touch-icon" href="assets/image.png" />
-    <meta name="theme-color" content="#10b981" />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-      /* Custom utility for a receipt-like jagged edge */
-      .jagged-edge {
-        background: linear-gradient(135deg, transparent 5px, white 5px) top left,
-                    linear-gradient(225deg, transparent 5px, white 5px) top right;
-        background-size: 10px 10px;
-        background-repeat: repeat-x;
-        height: 10px;
-        width: 100%;
-      }
-      .jagged-edge-bottom {
-        background: linear-gradient(45deg, transparent 5px, white 5px) bottom left,
-                    linear-gradient(315deg, transparent 5px, white 5px) bottom right;
-        background-size: 10px 10px;
-        background-repeat: repeat-x;
-        height: 10px;
-        width: 100%;
-      }
-      /* Hide scrollbar for clean mobile look */
-      .no-scrollbar::-webkit-scrollbar {
-        display: none;
-      }
-      .no-scrollbar {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-      }
-    </style>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Slip Vault</title>
+  <link rel="icon" type="image/png" href="assets/image.png" />
+  <link rel="apple-touch-icon" href="assets/image.png" />
+  <meta name="theme-color" content="#10b981" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Custom utility for a receipt-like jagged edge */
+    .jagged-edge {
+      background: linear-gradient(135deg, transparent 5px, white 5px) top left,
+        linear-gradient(225deg, transparent 5px, white 5px) top right;
+      background-size: 10px 10px;
+      background-repeat: repeat-x;
+      height: 10px;
+      width: 100%;
+    }
+
+    .jagged-edge-bottom {
+      background: linear-gradient(45deg, transparent 5px, white 5px) bottom left,
+        linear-gradient(315deg, transparent 5px, white 5px) bottom right;
+      background-size: 10px 10px;
+      background-repeat: repeat-x;
+      height: 10px;
+      width: 100%;
+    }
+
+    /* Hide scrollbar for clean mobile look */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
   <script type="importmap">
 {
   "imports": {
@@ -48,11 +52,13 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
+  <link rel="stylesheet" href="/index.css">
 </head>
-  <body class="bg-slate-50 text-slate-900 antialiased h-screen w-screen overflow-hidden">
-    <div id="root" class="h-full w-full"></div>
-    <script type="module" src="./index.tsx"></script>
+
+<body class="bg-slate-50 text-slate-900 antialiased h-screen w-screen overflow-hidden">
+  <div id="root" class="h-full w-full"></div>
+  <script type="module" src="./index.tsx"></script>
   <script type="module" src="/index.tsx"></script>
 </body>
+
 </html>

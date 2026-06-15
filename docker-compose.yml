@@ -1,18 +1,19 @@
 version: '3.8'
 
 services:
-  localstack:
-    image: localstack/localstack:latest
-    container_name: localstack_main
+  gcs-emulator:
+    image: fsouza/fake-gcs-server:latest
+    container_name: gcs_emulator_main
     ports:
-      - "4566:4566"
-    environment:
-      - SERVICES=s3,sqs
-      - AWS_DEFAULT_REGION=us-east-1
-    volumes:
-      # Mount the initialization script that runs when LocalStack is ready
-      - "./localstack-init.sh:/etc/localstack/init/ready.d/init-aws.sh"
-      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "4443:4443"
+    command: -scheme http
+
+  pubsub-emulator:
+    image: google/cloud-sdk:emulators
+    container_name: pubsub_emulator_main
+    ports:
+      - "8085:8085"
+    command: gcloud beta emulators pubsub start --host-port=0.0.0.0:8085
 
   api_service:
     build:
@@ -22,18 +23,19 @@ services:
       - "8000:8000"
     command: uvicorn api_service.app:app --host 0.0.0.0 --port 8000
     depends_on:
-      - localstack
+      - gcs-emulator
+      - pubsub-emulator
     environment:
-      - STORAGE_PROVIDER=S3
-      - MESSAGING_PROVIDER=SQS
-      - AWS_REGION=us-east-1
-      - AWS_S3_BUCKET=slip-vault-bucket
-      # Points to LocalStack queue internally
-      - AWS_SQS_QUEUE_URL=http://localstack:4566/000000000000/slip-vault-queue
-      # Forces boto3 clients to hit the LocalStack container instead of real AWS
-      - AWS_ENDPOINT_URL=http://localstack:4566
-      - AWS_ACCESS_KEY_ID=mock_key
-      - AWS_SECRET_ACCESS_KEY=mock_secret
+      - STORAGE_PROVIDER=GCS
+      - MESSAGING_PROVIDER=GCP_PUBSUB
+      - GCP_PROJECT_ID=slip-vault-project
+      - GCP_GCS_BUCKET=slip-vault-bucket
+      - GCP_PUBSUB_TOPIC_ID=slip-vault-topic
+      - GCP_PUBSUB_SUBSCRIPTION_ID=slip-vault-sub
+      # Tells the Google Storage SDK to use the local container endpoint
+      - STORAGE_EMULATOR_HOST=http://gcs-emulator:4443
+      # Tells the Google Pub/Sub SDK to use the local container endpoint
+      - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
     volumes:
       - ./backend:/app
 
@@ -43,16 +45,17 @@ services:
     container_name: slip_vault_worker
     command: python processor_service/worker.py
     depends_on:
-      - localstack
+      - gcs-emulator
+      - pubsub-emulator
     environment:
-      - STORAGE_PROVIDER=S3
-      - MESSAGING_PROVIDER=SQS
-      - AWS_REGION=us-east-1
-      - AWS_S3_BUCKET=slip-vault-bucket
-      - AWS_SQS_QUEUE_URL=http://localstack:4566/000000000000/slip-vault-queue
-      - AWS_ENDPOINT_URL=http://localstack:4566
-      - AWS_ACCESS_KEY_ID=mock_key
-      - AWS_SECRET_ACCESS_KEY=mock_secret
+      - STORAGE_PROVIDER=GCS
+      - MESSAGING_PROVIDER=GCP_PUBSUB
+      - GCP_PROJECT_ID=slip-vault-project
+      - GCP_GCS_BUCKET=slip-vault-bucket
+      - GCP_PUBSUB_TOPIC_ID=slip-vault-topic
+      - GCP_PUBSUB_SUBSCRIPTION_ID=slip-vault-sub
+      - STORAGE_EMULATOR_HOST=http://gcs-emulator:4443
+      - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
       # Load LLM configurations from the host shell environment variables
       - LLM_MODEL=${LLM_MODEL:-gemini/gemini-2.5-flash}
       - GEMINI_API_KEY=${GEMINI_API_KEY}

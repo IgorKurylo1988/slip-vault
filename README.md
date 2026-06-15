@@ -43,36 +43,34 @@ The backend runs on Python and uses SQLite for local database storage.
    GEMINI_API_KEY=your_actual_gemini_api_key
    # OPENAI_API_KEY=your_actual_openai_key
 
+   # Active Providers Selection
+   STORAGE_PROVIDER=GCS
+   MESSAGING_PROVIDER=GCP_PUBSUB
 
-   # Active Providers Selection (S3 or GCS for storage; SQS or GCP_PUBSUB for messaging)
-   STORAGE_PROVIDER=S3
-   MESSAGING_PROVIDER=SQS
+   # GCP GCS and Pub/Sub Configuration (Shared by local emulator and cloud)
+   GCP_PROJECT_ID=slip-vault-project
+   GCP_GCS_BUCKET=slip-vault-bucket
+   GCP_PUBSUB_TOPIC_ID=slip-vault-topic
+   GCP_PUBSUB_SUBSCRIPTION_ID=slip-vault-sub
 
-   # AWS S3 and SQS Configuration (Uses implicit boto3 credentials from environment/IAM)
-   AWS_REGION=us-east-1
-   AWS_S3_BUCKET=your_s3_bucket_name
-   AWS_SQS_QUEUE_URL=your_sqs_queue_url
-
-   # GCP GCS and Pub/Sub Configuration (Uses Application Default Credentials)
-   GCP_PROJECT_ID=your_gcp_project_id
-   GCP_GCS_BUCKET=your_gcs_bucket_name
-   GCP_PUBSUB_TOPIC_ID=your_pubsub_topic_id
-   GCP_PUBSUB_SUBSCRIPTION_ID=your_pubsub_subscription_id
+   # Local Emulators (Leave active for local development via docker-compose)
+   STORAGE_EMULATOR_HOST=http://localhost:4443
+   PUBSUB_EMULATOR_HOST=localhost:8085
    ```
-
 
 5. **Start the entire application stack** using Docker Compose:
    ```bash
    docker-compose up --build
    ```
 
-   This launches four containerized services:
-   * **LocalStack**: Runs local S3 and SQS endpoints at `http://localhost:4566`.
+   This launches five containerized services:
+   * **GCS Emulator**: Runs local S3-compatible Google Cloud Storage at `http://localhost:4443`.
+   * **Pub/Sub Emulator**: Runs local Google Cloud Pub/Sub service at `localhost:8085`.
    * **API Service**: Runs the FastAPI app at `http://localhost:8000`.
-   * **Processor Service**: Runs the SQS queue background worker.
+   * **Processor Service**: Runs the Pub/Sub background worker.
    * **Web Service**: Runs the React+Vite web application on `http://localhost:3000`.
 
-   *Note: LocalStack automatically runs `localstack-init.sh` at startup to create the `slip-vault-bucket` S3 bucket and `slip-vault-queue` SQS queue.*
+   *Note: The API service automatically initializes the GCS bucket (`slip-vault-bucket`), Pub/Sub topic (`slip-vault-topic`), and Pub/Sub subscription (`slip-vault-sub`) inside the emulators on startup.*
 
 ---
 
