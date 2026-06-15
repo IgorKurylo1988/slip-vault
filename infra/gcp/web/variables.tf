@@ -1,7 +1,21 @@
-variable "region" {
-  default="europe-central2"
-}
 variable "project_id" {
-  default=""
-  type = string
+  type        = string
+  description = "The Google Cloud Project ID"
+}
+
+variable "region" {
+  type        = string
+  default     = "us-central1"
+  description = "GCP Region for the provider setup"
+}
+
+variable "domain_name" {
+  type        = string
+  description = "The exact custom domain/subdomain name of your website (e.g., vault.yourdomain.com)"
+}
+
+variable "bucket_location" {
+  type        = string
+  default     = "US"
+  description = "The GCS location for the bucket (US, EU, ASIA or multi-region)"
 }
