@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AppState, InvoiceData } from './types';
 import { processInvoiceImage } from './services/invoiceService';
 import { fetchInvoices, saveInvoiceToStorage, deleteInvoiceFromStorage } from './services/storageService';
-import { requestNotificationPermission } from './services/notificationService';
+import { requestNotificationPermission, listenToInvoiceNotification } from './services/notificationService';
 import CameraCapture from './components/CameraCapture';
 import ReceiptView from './components/ReceiptView';
 import Dashboard from './components/Dashboard';
@@ -41,9 +41,21 @@ const App: React.FC = () => {
   const handleCapture = async (base64Image: string) => {
     setState(AppState.PROCESSING);
     try {
-      const data = await processInvoiceImage(base64Image);
-      setInvoiceData(data);
-      setState(AppState.VIEWING);
+      const pendingData = await processInvoiceImage(base64Image);
+      const invoiceId = pendingData.id;
+      
+      // Connect to WebSocket notification channel for this invoice ID
+      listenToInvoiceNotification(
+        invoiceId,
+        (completedData) => {
+          setInvoiceData(completedData);
+          setState(AppState.VIEWING);
+        },
+        (errorReason) => {
+          setErrorMsg(errorReason);
+          setState(AppState.ERROR);
+        }
+      );
     } catch (error) {
       console.error(error);
       setErrorMsg(error instanceof Error ? error.message : "An error occurred");

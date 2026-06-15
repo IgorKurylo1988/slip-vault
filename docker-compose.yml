@@ -18,6 +18,7 @@ services:
   api_service:
     build:
       context: ./backend
+      dockerfile: api_service/Dockerfile
     container_name: slip_vault_api
     ports:
       - "8000:8000"
@@ -42,6 +43,7 @@ services:
   processor_service:
     build:
       context: ./backend
+      dockerfile: processor_service/Dockerfile
     container_name: slip_vault_worker
     command: python processor_service/worker.py
     depends_on:

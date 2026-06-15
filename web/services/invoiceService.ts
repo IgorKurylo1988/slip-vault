@@ -61,7 +61,7 @@ const preprocessImageToScanStyle = (base64Input: string): Promise<string> => {
 /**
  * Sends the preprocessed base64 image to the backend service for OCR and LLM extraction.
  */
-const processInvoiceImage = async (base64Image: string): Promise<InvoiceData> => {
+const processInvoiceImage = async (base64Image: string): Promise<any> => {
   const scannedImage = await preprocessImageToScanStyle(base64Image);
 
   const response = await fetch(`${API_URL}/process-invoice`, {

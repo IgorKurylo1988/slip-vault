@@ -3,6 +3,7 @@ import json
 import os
 import sys
 import logging
+import urllib.request
 from dotenv import load_dotenv
 
 # Add the parent backend folder to sys.path to allow importing from the common folder
@@ -18,6 +19,27 @@ logger = logging.getLogger("worker")
 
 # Load local environment variables (resolves to backend/.env if run from backend/)
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"))
+
+API_CALLBACK_URL = os.getenv("API_CALLBACK_URL", "http://api_service:8000")
+
+def send_callback(invoice_id: str, status: str, data: dict):
+    url = f"{API_CALLBACK_URL}/api/invoices/{invoice_id}/callback"
+    payload = {
+        "status": status,
+        "data": data
+    }
+    logger.info(f"Sending callback for {invoice_id} with status {status} to {url}")
+    try:
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=5) as response:
+            response.read()
+    except Exception as e:
+        logger.error(f"Failed to send callback for invoice {invoice_id}: {e}")
 
 def poll_queue():
     messaging_provider = get_messaging_provider()
@@ -35,38 +57,43 @@ def poll_queue():
                 body = task["body"]
 
                 invoice_id = body.get("id")
-                s3_url = body.get("s3_url")
+                gcs_url = body.get("gcs_url")
 
-                if not invoice_id or not s3_url:
+                if not invoice_id or not gcs_url:
                     logger.warning(f"Invalid message format received: {body}. Deleting message.")
                     messaging_provider.delete_message(receipt_handle)
                     continue
 
-                logger.info(f"Processing invoice task {invoice_id} from URL: {s3_url}")
+                logger.info(f"Processing invoice task {invoice_id} from URL: {gcs_url}")
 
                 try:
                     # 1. Call LiteLLM interface to process the image
-                    metadata = llm.process_invoice_image(s3_url)
+                    metadata = llm.process_invoice_image(gcs_url)
                     
                     # 2. Check receipt rules
                     if metadata.get("type") == "INVALID":
                         rejection = metadata.get("rejectionReason") or "This document is not a refundable receipt (Credit Note)."
                         logger.warning(f"Invoice {invoice_id} is INVALID: {rejection}")
                         db.update_invoice_error(invoice_id, rejection)
+                        send_callback(invoice_id, "ERROR", {"error": rejection})
                     elif not metadata.get("totalAmount") or metadata["totalAmount"] <= 0:
                         rejection = "Could not find a valid total amount on this receipt."
                         logger.warning(f"Invoice {invoice_id} total amount invalid: {metadata.get('totalAmount')}")
                         db.update_invoice_error(invoice_id, rejection)
+                        send_callback(invoice_id, "ERROR", {"error": rejection})
                     else:
                         # Success: save extracted metadata to DB and mark status as COMPLETED
                         logger.info(f"Invoice {invoice_id} successfully parsed. Saving to DB.")
                         db.update_invoice_success(invoice_id, metadata)
+                        row = db.get_invoice_by_id(invoice_id)
+                        send_callback(invoice_id, "COMPLETED", row or metadata)
 
                 except Exception as ex:
-                    # Update status to ERROR in SQLite database so the API polling thread wakes up and errors out
+                    # Update status to ERROR in SQLite database
                     error_msg = f"Processing error: {str(ex)}"
                     logger.error(f"Error processing invoice {invoice_id}: {error_msg}")
                     db.update_invoice_error(invoice_id, error_msg)
+                    send_callback(invoice_id, "ERROR", {"error": error_msg})
 
                 finally:
                     # Delete/Acknowledge message from SQS or GCP Pub/Sub to avoid duplicate processing

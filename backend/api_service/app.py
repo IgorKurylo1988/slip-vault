@@ -88,33 +88,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Request schemas
-class ProcessInvoiceRequest(BaseModel):
-    image: str  # Base64 string of the processed grayscale image
-    id: Optional[str] = None  # Client-supplied unique invoice identifier for notifications
-
-class InvoiceItemSchema(BaseModel):
-    sku: Optional[str] = None
-    name: str
-    quantity: float
-    price: float
-
-class InvoiceDataSchema(BaseModel):
-    id: Optional[str] = None
-    createdAt: Optional[int] = None
-    storeName: Optional[str] = None
-    storeAddress: Optional[str] = None
-    date: Optional[str] = None
-    time: Optional[str] = None
-    invoiceNumber: Optional[str] = None
-    type: Optional[str] = None
-    currency: Optional[str] = None
-    items: List[InvoiceItemSchema] = []
-    subtotal: Optional[float] = None
-    tax: Optional[float] = None
-    totalAmount: Optional[float] = None
-    confidenceScore: Optional[float] = None
-    scannedImage: Optional[str] = None
+from common.schemas import ProcessInvoiceRequest, InvoiceDataSchema
 
 @app.websocket("/ws/notifications/{invoice_id}")
 async def websocket_endpoint(websocket: WebSocket, invoice_id: str):
@@ -177,43 +151,38 @@ async def process_invoice(req: ProcessInvoiceRequest):
         # 4. Dispatch processing task to active messaging provider (e.g. GCP Pub/Sub or Dummy)
         task_payload = {
             "id": invoice_id,
-            "s3_url": storage_url
+            "gcs_url": storage_url
         }
         get_messaging_provider().publish_message(task_payload)
         
-        # 5. Poll the database waiting for the worker to update status
-        # Poll every 0.5 seconds for a maximum of 15 seconds (30 iterations)
-        for _ in range(30):
-            await asyncio.sleep(0.5)
-            row = db.get_invoice_by_id(invoice_id)
-            if not row:
-                continue
-                
-            if row["status"] == "COMPLETED":
-                # Notify active listeners that processing completed successfully
-                await notification_service.notify_processing_finished(invoice_id, "COMPLETED", row)
-                return row
-            elif row["status"] == "ERROR":
-                rejection = row.get("rejectionReason") or "Document type was invalid or could not be processed."
-                # Notify active listeners that processing failed
-                await notification_service.notify_processing_finished(invoice_id, "ERROR", {"error": rejection})
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=rejection
-                )
-        
-        # If timeout occurs, inform the user but leave in queue
-        raise HTTPException(
-            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-            detail="Processing timed out. The document is queued and will be processed shortly."
-        )
+        # Return pending invoice state immediately (no database polling)
+        return {
+            "id": invoice_id,
+            "status": "PROCESSING",
+            "scannedImage": storage_url
+        }
 
-    except HTTPException as he:
-        raise he
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to initiate invoice processing: {str(e)}"
+        )
+
+class ProcessingCallbackRequest(BaseModel):
+    status: str  # "COMPLETED" or "ERROR"
+    data: dict
+
+@app.post("/api/invoices/{invoice_id}/callback")
+async def processing_callback(invoice_id: str, req: ProcessingCallbackRequest):
+    """Callback endpoint for the worker to notify API service of completion"""
+    try:
+        # Broadcast the processing finish status to connected websocket clients
+        await notification_service.notify_processing_finished(invoice_id, req.status, req.data)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to handle processing callback: {str(e)}"
         )
 
 @app.get("/")
