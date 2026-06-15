@@ -20,10 +20,10 @@ logger = logging.getLogger("worker")
 # Load local environment variables (resolves to backend/.env if run from backend/)
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"))
 
-API_CALLBACK_URL = os.getenv("API_CALLBACK_URL", "http://api_service:8000")
+NOTIFICATION_CALLBACK_URL = os.getenv("NOTIFICATION_CALLBACK_URL", "http://notification_service:8001")
 
 def send_callback(invoice_id: str, status: str, data: dict):
-    url = f"{API_CALLBACK_URL}/api/invoices/{invoice_id}/callback"
+    url = f"{NOTIFICATION_CALLBACK_URL}/api/invoices/{invoice_id}/callback"
     payload = {
         "status": status,
         "data": data

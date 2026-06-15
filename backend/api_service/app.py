@@ -2,7 +2,7 @@ import os
 import sys
 import uuid
 import asyncio
-from fastapi import FastAPI, HTTPException, status, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
@@ -15,7 +15,6 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from common import db
 from common.storage import get_storage_provider
 from common.messaging import get_messaging_provider
-from common.notification import notification_service
 
 # Load local environment variables (resolves to backend/.env if run from backend/)
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"))
@@ -90,18 +89,6 @@ app.add_middleware(
 
 from common.schemas import ProcessInvoiceRequest, InvoiceDataSchema
 
-@app.websocket("/ws/notifications/{invoice_id}")
-async def websocket_endpoint(websocket: WebSocket, invoice_id: str):
-    """WebSocket endpoint for clients to listen to real-time status updates of an invoice"""
-    await notification_service.register(invoice_id, websocket)
-    try:
-        while True:
-            # Keep the socket open and listen for incoming messages (e.g. pings/keepalives)
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        notification_service.unregister(invoice_id, websocket)
-    except Exception:
-        notification_service.unregister(invoice_id, websocket)
 
 @app.get("/api/invoices", response_model=List[InvoiceDataSchema])
 async def get_invoices():
@@ -168,22 +155,6 @@ async def process_invoice(req: ProcessInvoiceRequest):
             detail=f"Failed to initiate invoice processing: {str(e)}"
         )
 
-class ProcessingCallbackRequest(BaseModel):
-    status: str  # "COMPLETED" or "ERROR"
-    data: dict
-
-@app.post("/api/invoices/{invoice_id}/callback")
-async def processing_callback(invoice_id: str, req: ProcessingCallbackRequest):
-    """Callback endpoint for the worker to notify API service of completion"""
-    try:
-        # Broadcast the processing finish status to connected websocket clients
-        await notification_service.notify_processing_finished(invoice_id, req.status, req.data)
-        return {"status": "success"}
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to handle processing callback: {str(e)}"
-        )
 
 @app.get("/")
 async def root():

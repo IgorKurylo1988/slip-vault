@@ -37,7 +37,7 @@ export const listenToInvoiceNotification = (
 ): WebSocket | null => {
   if (typeof window === 'undefined') return null;
 
-  const wsUrl = `ws://localhost:8000/ws/notifications/${invoiceId}`;
+  const wsUrl = `ws://localhost:8001/ws/notifications/${invoiceId}`;
   const ws = new WebSocket(wsUrl);
 
   ws.onmessage = (event) => {
