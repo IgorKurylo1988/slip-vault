@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  localstack:
+    image: localstack/localstack:latest
+    container_name: localstack_main
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3,sqs
+      - AWS_DEFAULT_REGION=us-east-1
+    volumes:
+      # Mount the initialization script that runs when LocalStack is ready
+      - "./localstack-init.sh:/etc/localstack/init/ready.d/init-aws.sh"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+
+  api_service:
+    build:
+      context: ./backend
+    container_name: slip_vault_api
+    ports:
+      - "8000:8000"
+    command: uvicorn api_service.app:app --host 0.0.0.0 --port 8000
+    depends_on:
+      - localstack
+    environment:
+      - STORAGE_PROVIDER=S3
+      - MESSAGING_PROVIDER=SQS
+      - AWS_REGION=us-east-1
+      - AWS_S3_BUCKET=slip-vault-bucket
+      # Points to LocalStack queue internally
+      - AWS_SQS_QUEUE_URL=http://localstack:4566/000000000000/slip-vault-queue
+      # Forces boto3 clients to hit the LocalStack container instead of real AWS
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      - AWS_ACCESS_KEY_ID=mock_key
+      - AWS_SECRET_ACCESS_KEY=mock_secret
+    volumes:
+      - ./backend:/app
+
+  processor_service:
+    build:
+      context: ./backend
+    container_name: slip_vault_worker
+    command: python processor_service/worker.py
+    depends_on:
+      - localstack
+    environment:
+      - STORAGE_PROVIDER=S3
+      - MESSAGING_PROVIDER=SQS
+      - AWS_REGION=us-east-1
+      - AWS_S3_BUCKET=slip-vault-bucket
+      - AWS_SQS_QUEUE_URL=http://localstack:4566/000000000000/slip-vault-queue
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      - AWS_ACCESS_KEY_ID=mock_key
+      - AWS_SECRET_ACCESS_KEY=mock_secret
+      # Load LLM configurations from the host shell environment variables
+      - LLM_MODEL=${LLM_MODEL:-gemini/gemini-2.5-flash}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - ./backend:/app
+
+  web_service:
+    build:
+      context: ./web
+    container_name: slip_vault_web
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./web:/app
+      # Anonymous volume prevents host-mount overrides from wiping container node_modules
+      - /app/node_modules
+    depends_on:
+      - api_service
+    environment:
+      - NODE_ENV=development

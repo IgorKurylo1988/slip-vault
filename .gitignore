@@ -1,0 +1,23 @@
+# Node / Frontend ignores
+node_modules/
+dist/
+dist-ssr/
+*.local
+.eslintcache
+.vscode/
+
+# Python backend ignores
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+backend/invoices.db
+backend/invoices.db-journal
+
+# Environment variables
+.env
+.env*.local
+*.env
