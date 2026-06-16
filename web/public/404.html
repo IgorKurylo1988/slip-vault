@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>404 - Slip Not Found | Slip Vault</title>
+  <meta name="description" content="Oops! The receipt or page you are looking for has been misplaced. Return to Slip Vault to secure your credit invoices and refund receipts.">
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="/assets/image.png" />
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Outfit', 'sans-serif'],
+            receipt: ['Share Tech Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <style>
+    /* Radial Background & Grid */
+    .bg-grid {
+      background-size: 30px 30px;
+      background-image: 
+        radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px);
+    }
+    
+    /* 3D Perspective and Rotations */
+    .perspective-container {
+      perspective: 1000px;
+    }
+    
+    .receipt-card {
+      transform: rotateY(-8deg) rotateX(6deg) rotateZ(-1deg);
+      transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.5s ease;
+      box-shadow: 
+        -10px 15px 30px -5px rgba(0, 0, 0, 0.3),
+        0 10px 20px -10px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+    
+    .receipt-card:hover {
+      transform: rotateY(0deg) rotateX(0deg) rotateZ(0deg) scale(1.03);
+      box-shadow: 
+        0 25px 50px -12px rgba(0, 0, 0, 0.5),
+        0 0 40px 5px rgba(16, 185, 129, 0.15);
+    }
+    
+    /* Jagged Edge Clip Path */
+    .receipt-jagged {
+      clip-path: polygon(
+        0% 12px, 2.5% 0px, 5% 12px, 7.5% 0px, 10% 12px, 12.5% 0px, 15% 12px, 17.5% 0px, 20% 12px, 22.5% 0px, 25% 12px, 27.5% 0px, 30% 12px, 32.5% 0px, 35% 12px, 37.5% 0px, 40% 12px, 42.5% 0px, 45% 12px, 47.5% 0px, 50% 12px, 52.5% 0px, 55% 12px, 57.5% 0px, 60% 12px, 62.5% 0px, 65% 12px, 67.5% 0px, 70% 12px, 72.5% 0px, 75% 12px, 77.5% 0px, 80% 12px, 82.5% 0px, 85% 12px, 87.5% 0px, 90% 12px, 92.5% 0px, 95% 12px, 97.5% 0px, 100% 12px,
+        100% calc(100% - 12px), 97.5% 100%, 95% calc(100% - 12px), 92.5% 100%, 90% calc(100% - 12px), 87.5% 100%, 85% calc(100% - 12px), 82.5% 100%, 80% calc(100% - 12px), 77.5% 100%, 75% calc(100% - 12px), 72.5% 100%, 70% calc(100% - 12px), 67.5% 100%, 65% calc(100% - 12px), 62.5% 100%, 60% calc(100% - 12px), 57.5% 100%, 55% calc(100% - 12px), 52.5% 100%, 50% calc(100% - 12px), 47.5% 100%, 45% calc(100% - 12px), 42.5% 100%, 40% calc(100% - 12px), 37.5% 100%, 35% calc(100% - 12px), 32.5% 100%, 30% calc(100% - 12px), 27.5% 100%, 25% calc(100% - 12px), 22.5% 100%, 20% calc(100% - 12px), 17.5% 100%, 15% calc(100% - 12px), 12.5% 100%, 10% calc(100% - 12px), 7.5% 100%, 5% calc(100% - 12px), 2.5% 100%, 0% calc(100% - 12px)
+      );
+    }
+    
+    /* Scanner Laser Animation */
+    @keyframes scan {
+      0% {
+        top: 0%;
+        opacity: 0;
+      }
+      5% {
+        opacity: 0.8;
+      }
+      95% {
+        opacity: 0.8;
+      }
+      100% {
+        top: 100%;
+        opacity: 0;
+      }
+    }
+    
+    .scanner-line {
+      animation: scan 4s ease-in-out infinite;
+    }
+    
+    /* Distress stamp rotate & distress */
+    .void-stamp {
+      font-family: 'Outfit', sans-serif;
+      text-transform: uppercase;
+      font-weight: 800;
+      font-size: 2.25rem;
+      color: rgba(239, 68, 68, 0.85);
+      border: 4px solid rgba(239, 68, 68, 0.85);
+      padding: 2px 16px;
+      transform: rotate(-15deg) scale(1);
+      letter-spacing: 4px;
+      background: rgba(254, 242, 242, 0.9);
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.1);
+      display: inline-block;
+      pointer-events: none;
+    }
+    
+    /* Scan flash animation */
+    @keyframes flash {
+      0% {
+        opacity: 0;
+      }
+      50% {
+        opacity: 0.95;
+      }
+      100% {
+        opacity: 0;
+      }
+    }
+    
+    .flash-overlay {
+      display: none;
+      animation: flash 0.5s ease-in-out forwards;
+    }
+    
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #090d16;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1f2937;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="h-full bg-[#090D16] text-slate-100 flex items-center justify-center overflow-x-hidden select-none font-sans bg-grid">
+
+  <!-- Glow effects -->
+  <div class="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[35rem] h-[35rem] bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+  <div class="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-[40rem] h-[40rem] bg-emerald-600/5 rounded-full blur-[120px] pointer-events-none"></div>
+
+  <!-- Main Container -->
+  <main class="w-full max-w-6xl mx-auto px-6 py-12 flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-20 z-10">
+    
+    <!-- Left Column: Copy & Actions -->
+    <div class="w-full lg:w-1/2 text-center lg:text-left flex flex-col items-center lg:items-start max-w-xl">
+      
+      <!-- Logo -->
+      <a href="/" class="flex items-center gap-3 mb-8 group" id="logo-link">
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-emerald-500 to-emerald-400 flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform duration-300">
+          <i data-lucide="wallet" class="text-white w-6 h-6"></i>
+        </div>
+        <span class="font-display font-bold text-xl tracking-tight bg-gradient-to-r from-white via-slate-200 to-emerald-400 bg-clip-text text-transparent">Slip Vault</span>
+      </a>
+
+      <!-- Large Error Badge -->
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-display font-semibold text-sm tracking-wide mb-6">
+        <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+        ERROR CODE: 404
+      </div>
+
+      <!-- Main Heading -->
+      <h1 class="font-display font-extrabold text-4xl sm:text-5xl lg:text-6xl text-white tracking-tight leading-none mb-6">
+        Slip <span class="bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent">Misplaced!</span>
+      </h1>
+
+      <!-- Description -->
+      <p class="text-slate-400 text-lg leading-relaxed mb-8 max-w-md">
+        We've scanned every pocket, wallet, and database entry, but this receipt seems to have vanished into thin air.
+      </p>
+
+      <!-- Action Buttons -->
+      <div class="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+        <button 
+          id="btn-scan"
+          class="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-600 hover:to-emerald-500 text-slate-950 font-display font-bold rounded-xl shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 group"
+        >
+          <i data-lucide="scan" class="w-5 h-5 group-hover:rotate-12 transition-transform"></i>
+          Scan Home Page
+        </button>
+        
+        <a 
+          id="btn-home"
+          href="/" 
+          class="w-full sm:w-auto px-8 py-4 bg-slate-900/60 hover:bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 font-display font-semibold rounded-xl active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2"
+        >
+          <i data-lucide="arrow-left" class="w-5 h-5"></i>
+          Return to Dashboard
+        </a>
+      </div>
+    </div>
+
+    <!-- Right Column: Interactive Receipt -->
+    <div class="w-full lg:w-1/2 flex justify-center perspective-container">
+      <div class="relative w-full max-w-[340px] sm:max-w-[380px]">
+        
+        <!-- Tape effect top -->
+        <div class="absolute top-[-15px] left-1/2 -translate-x-1/2 w-28 h-8 bg-white/10 backdrop-blur-sm border-x border-t border-white/5 rounded-t-sm shadow-sm rotate-[-2deg] z-20 pointer-events-none"></div>
+
+        <!-- Receipt Card Container -->
+        <div class="receipt-card receipt-jagged bg-white text-slate-800 p-6 sm:p-8 pt-10 pb-10 relative overflow-hidden font-receipt">
+          
+          <!-- Laser Scanning Line -->
+          <div class="scanner-line absolute left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-emerald-500 to-transparent shadow-[0_0_8px_#10b981] z-10 pointer-events-none"></div>
+
+          <!-- Distress Void Stamp -->
+          <div class="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 rotate-[-12deg] opacity-90">
+            <div class="void-stamp border-double">VOID</div>
+          </div>
+
+          <!-- Header / Merchant -->
+          <div class="text-center mb-6">
+            <h2 class="font-bold text-lg tracking-wider">SLIP VAULT RECOVERY</h2>
+            <p class="text-xs text-slate-500 mt-1">100 DIGITAL STACK ROAD</p>
+            <p class="text-xs text-slate-500">HTTPS://SLIP-VAULT.COM</p>
+          </div>
+
+          <!-- Transaction Meta -->
+          <div class="text-xs space-y-1 text-slate-600 border-t border-dashed border-slate-300 pt-4 mb-4">
+            <div class="flex justify-between">
+              <span>TERMINAL:</span>
+              <span class="font-semibold">TERM-404-SLIP</span>
+            </div>
+            <div class="flex justify-between">
+              <span>DATE:</span>
+              <span class="font-semibold" id="receipt-date">16 JUN 2026 11:26:08</span>
+            </div>
+            <div class="flex justify-between">
+              <span>STATUS:</span>
+              <span class="text-red-600 font-bold">MISPLACED / 404</span>
+            </div>
+          </div>
+
+          <!-- Line Items -->
+          <div class="border-t border-dashed border-slate-300 pt-4 mb-6">
+            <div class="text-xs text-slate-500 font-semibold mb-2 flex justify-between">
+              <span>ITEM DESCRIPTION</span>
+              <span>AMOUNT</span>
+            </div>
+            
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between items-start">
+                <span class="break-all pr-4 max-w-[200px]" id="requested-path">PATH: /unknown</span>
+                <span class="shrink-0">$4.04</span>
+              </div>
+              <div class="flex justify-between">
+                <span>EST. VALUE OF TIME</span>
+                <span>$0.00</span>
+              </div>
+              <div class="flex justify-between">
+                <span>PEACE OF MIND</span>
+                <span class="text-emerald-600">-$999.99</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Total -->
+          <div class="border-t-2 border-slate-800 pt-4 mb-6">
+            <div class="flex justify-between items-baseline font-bold">
+              <span class="text-base">TOTAL LOSS</span>
+              <span class="text-xl font-extrabold tracking-tight" id="receipt-total">404.00 USD</span>
+            </div>
+            <p class="text-[10px] text-slate-500 mt-1 text-right">TAX INCLUDED 100%</p>
+          </div>
+
+          <!-- Barcode Section -->
+          <div class="border-t border-dashed border-slate-300 pt-6 text-center">
+            
+            <!-- Real Barcode Representation -->
+            <div class="flex justify-center items-end h-12 w-full overflow-hidden opacity-90 cursor-pointer group/barcode" id="barcode-container" title="Click to Scan!">
+              <!-- Custom rendered barcode using lines -->
+              <div class="w-[2px] h-full bg-slate-800 mr-[1px]"></div>
+              <div class="w-[1px] h-full bg-slate-800 mr-[2px]"></div>
+              <div class="w-[3px] h-full bg-slate-800 mr-[1px]"></div>
+              <div class="w-[1px] h-full bg-slate-800 mr-[1px]"></div>
+              <div class="w-[4px] h-full bg-slate-800 mr-[2px]"></div>
+              <div class="w-[2px] h-full bg-slate-800 mr-[1px]"></div>
+              <div class="w-[1px] h-full bg-slate-800 mr-[3px]"></div>
+              <div class="w-[3px] h-full bg-slate-800 mr-[1px]"></div>
+              <div class="w-[2px] h-full bg-slate-800 mr-[2px]"></div>
+              <div class="w-[1px] h-full bg-slate-800 mr-[1px]"></div>
+              <div class="w-[4px] h-full bg-slate-800 mr-[2px]"></div>
+              <div class="w-[2px] h-full bg-slate-800 mr-[1px]"></div>
+              <div class="w-[1px] h-full bg-slate-800 mr-[2px]"></div>
+              <div class="w-[3px] h-full bg-slate-800 mr-[1px]"></div>
+              <div class="w-[1px] h-full bg-slate-800 mr-[1px]"></div>
+              <div class="w-[4px] h-full bg-slate-800 mr-[2px]"></div>
+              <div class="w-[2px] h-full bg-slate-800 mr-[1px]"></div>
+              <div class="w-[1px] h-full bg-slate-800 mr-[3px]"></div>
+              <div class="w-[3px] h-full bg-slate-800 mr-[1px]"></div>
+              <div class="w-[2px] h-full bg-slate-800 mr-[2px]"></div>
+              <div class="w-[1px] h-full bg-slate-800 mr-[1px]"></div>
+              <div class="w-[4px] h-full bg-slate-800 mr-[2px]"></div>
+              <div class="w-[2px] h-full bg-slate-800 mr-[1px]"></div>
+              <div class="w-[1px] h-full bg-slate-800 mr-[1px]"></div>
+              <div class="w-[2px] h-full bg-slate-800 mr-[2px]"></div>
+              <div class="w-[4px] h-full bg-slate-800 mr-[1px]"></div>
+              <div class="w-[1px] h-full bg-slate-800"></div>
+            </div>
+            
+            <p class="text-[9px] text-slate-500 font-semibold tracking-[0.25em] mt-2 group-hover/barcode:text-emerald-600 transition-colors">* 4 0 4 - S L I P - N O T - F O U N D *</p>
+            
+            <p class="text-[10px] text-slate-400 mt-4 leading-normal italic">
+              "Money stored, slips secured. Keep your receipts safe!"
+            </p>
+          </div>
+        </div>
+
+        <!-- Scrap of paper floating below -->
+        <div class="absolute bottom-[-25px] left-8 w-16 h-8 bg-white text-slate-800 p-2 text-[8px] font-receipt rotate-[15deg] shadow-md receipt-jagged border-t border-slate-200 flex flex-col justify-between pointer-events-none opacity-80">
+          <div class="w-full h-[2px] bg-slate-300"></div>
+          <div class="w-2/3 h-[2px] bg-slate-300"></div>
+          <div class="text-[6px] text-slate-500 text-right">#404</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Full-screen Scanner laser flash overlay -->
+  <div id="flash-overlay" class="flash-overlay fixed inset-0 bg-emerald-500/20 backdrop-blur-[2px] z-50 pointer-events-none"></div>
+
+  <!-- Audio Beep context -->
+  <script>
+    // Initialize Lucide icons
+    lucide.createIcons();
+
+    // Dynamically format requested path on the receipt
+    const requestedPathEl = document.getElementById('requested-path');
+    const path = window.location.pathname || '/';
+    
+    // Format path to look pretty on receipt
+    let formattedPath = path;
+    if (formattedPath.length > 22) {
+      formattedPath = 'PATH: ...' + formattedPath.substring(formattedPath.length - 18);
+    } else {
+      formattedPath = 'PATH: ' + formattedPath;
+    }
+    requestedPathEl.textContent = formattedPath.toUpperCase();
+
+    // Dynamically format receipt date/time to local current time
+    const dateEl = document.getElementById('receipt-date');
+    const now = new Date();
+    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = months[now.getMonth()];
+    const year = now.getFullYear();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    
+    dateEl.textContent = `${day} ${month} ${year} ${hours}:${minutes}:${seconds}`;
+
+    // POS barcode scanning sound function using Web Audio API
+    function playScannerBeep() {
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+        
+        // POS scanners usually emit a short high frequency beep
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1400, ctx.currentTime); // 1.4kHz beep
+        
+        gain.gain.setValueAtTime(0.12, ctx.currentTime);
+        // Quick ramp down for clean clicky cutoff
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+        
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        
+        osc.start();
+        osc.stop(ctx.currentTime + 0.15);
+      } catch (e) {
+        console.warn('Audio play prevented or unsupported:', e);
+      }
+    }
+
+    // Interactive barcode click scan
+    const barcodeContainer = document.getElementById('barcode-container');
+    const flashOverlay = document.getElementById('flash-overlay');
+    
+    barcodeContainer.addEventListener('click', () => {
+      playScannerBeep();
+      
+      // Trigger instant scan line speed up and flash visual
+      flashOverlay.style.display = 'block';
+      setTimeout(() => {
+        flashOverlay.style.display = 'none';
+      }, 500);
+    });
+
+    // Scan Home button behavior
+    const btnScan = document.getElementById('btn-scan');
+    btnScan.addEventListener('click', (e) => {
+      e.preventDefault();
+      playScannerBeep();
+      
+      // Trigger scanning animation
+      flashOverlay.style.display = 'block';
+      
+      // Redirect home after brief delay to simulate scanning completeness
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 400);
+    });
+  </script>
+</body>
+</html>
