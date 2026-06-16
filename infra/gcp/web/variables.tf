@@ -16,6 +16,6 @@ variable "domain_name" {
 
 variable "bucket_location" {
   type        = string
-  default     = "US"
+  default     = "EU"
   description = "The GCS location for the bucket (US, EU, ASIA or multi-region)"
 }
