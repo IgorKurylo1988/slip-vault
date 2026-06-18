@@ -5,7 +5,7 @@ variable "project_id" {
 
 variable "region" {
   type        = string
-  default     = "us-central1"
+  default     = "europe-central2"
   description = "GCP Region for the provider setup"
 }
 
@@ -16,6 +16,6 @@ variable "domain_name" {
 
 variable "bucket_location" {
   type        = string
-  default     = "US"
+  default     = "EU"
   description = "The GCS location for the bucket (US, EU, ASIA or multi-region)"
 }

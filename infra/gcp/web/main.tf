@@ -1,11 +1,11 @@
 
 locals{
-    domain_name="www.slip-vault.io"
+    domain_name="www.slip-vault.com"
 }
 # The bucket name MUST match the exact custom domain name you use in Cloudflare
 resource "google_storage_bucket" "static_website" {
   name          = local.domain_name
-  location      = "EU"
+  location      = var.bucket_location
   force_destroy = false # Prevents accidental deletion of the bucket and its contents
 
   website {
