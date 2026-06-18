@@ -1,0 +1,95 @@
+name: Infra Pipeline
+
+on:
+  push:
+    branches: [main]
+    paths: ['infra/**']
+  pull_request:
+    paths: ['infra/**']
+
+jobs:
+  validate:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        directory: [infra/cloudflare, infra/gcp/web]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.0
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Terraform Format Check
+        run: terraform fmt -check
+        working-directory: ${{ matrix.directory }}
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ${{ matrix.directory }}
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: ${{ matrix.directory }}
+
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
+        working-directory: ${{ matrix.directory }}
+        env:
+          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          TF_VAR_cloudflare_zone_id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Upload Plan Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ matrix.directory == 'infra/cloudflare' && 'cloudflare' || 'web' }}
+          path: ${{ matrix.directory }}/tfplan
+
+  deploy:
+    name: Terraform Apply
+    needs: validate
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        directory: [infra/cloudflare, infra/gcp/web]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.0
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Download Plan Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-${{ matrix.directory == 'infra/cloudflare' && 'cloudflare' || 'web' }}
+          path: ${{ matrix.directory }}
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ${{ matrix.directory }}
+
+      - name: Terraform Apply
+        run: terraform apply -input=false tfplan
+        working-directory: ${{ matrix.directory }}
+        env:
+          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          TF_VAR_cloudflare_zone_id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
