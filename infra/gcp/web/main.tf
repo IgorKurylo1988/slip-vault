@@ -1,6 +1,6 @@
 
-locals{
-    domain_name="www.slip-vault.com"
+locals {
+  domain_name = "www.slip-vault.com"
 }
 # The bucket name MUST match the exact custom domain name you use in Cloudflare
 resource "google_storage_bucket" "static_website" {
@@ -28,9 +28,9 @@ resource "google_storage_bucket_iam_member" "public_viewer" {
 resource "google_storage_bucket_object" "web_dist" {
   for_each = fileset("${path.module}/../../../web/dist", "**")
 
-  name         = each.value
-  source       = "${path.module}/../../../web/dist/${each.value}"
-  bucket       = google_storage_bucket.static_website.name
+  name   = each.value
+  source = "${path.module}/../../../web/dist/${each.value}"
+  bucket = google_storage_bucket.static_website.name
   content_type = lookup(
     local.mime_types,
     element(split(".", each.value), length(split(".", each.value)) - 1),
