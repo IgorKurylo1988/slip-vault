@@ -1,4 +1,3 @@
-
 locals {
   domain_name = "www.slip-vault.com"
 }
