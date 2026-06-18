@@ -10,7 +10,7 @@ resource "google_storage_bucket" "static_website" {
 
   website {
     main_page_suffix = "index.html"
-    not_found_page   = "public/404.html" # Redirects missing paths to index.html (crucial for React SPA routing)
+    not_found_page   = "404.html" # Redirects missing paths to the custom 404 page (located at the root of dist after build)
   }
 
   # Set public access prevention to inherited to allow allUsers access
