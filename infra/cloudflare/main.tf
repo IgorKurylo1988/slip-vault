@@ -1,8 +1,19 @@
-
+locals {
+  dns_name = "slip-vault.com"
+}
 data "cloudflare_zone" "zone" {
   filter = {
-    name = "slip-vault.com"
+    name = local.dns_name
   }
+}
+resource "cloudflare_dns_record" "www" {
+  zone_id = data.cloudflare_zone.zone.id
+  name    = "${var.static_subdomain}.${local.dns_name}"
+  content = local.dns_name
+  type    = "CNAME"
+  proxied = true
+  ttl     = 1
+
 }
 
 # Phase 1: Static Website DNS Record (Google Cloud Storage mapping)
