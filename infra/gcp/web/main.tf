@@ -23,36 +23,5 @@ resource "google_storage_bucket_iam_member" "public_viewer" {
   member = "allUsers"
 }
 
-# Upload the web app build output files to GCS
-resource "google_storage_bucket_object" "web_dist" {
-  for_each = fileset("${path.module}/../../../web/dist", "**")
-
-  name   = each.value
-  source = "${path.module}/../../../web/dist/${each.value}"
-  bucket = google_storage_bucket.static_website.name
-  content_type = lookup(
-    local.mime_types,
-    element(split(".", each.value), length(split(".", each.value)) - 1),
-    "application/octet-stream"
-  )
-}
-
-locals {
-  mime_types = {
-    html  = "text/html"
-    css   = "text/css"
-    js    = "application/javascript"
-    json  = "application/json"
-    png   = "image/png"
-    jpg   = "image/jpeg"
-    jpeg  = "image/jpeg"
-    svg   = "image/svg+xml"
-    ico   = "image/x-icon"
-    webp  = "image/webp"
-    txt   = "text/plain"
-    woff  = "font/woff"
-    woff2 = "font/woff2"
-  }
-}
 
 
