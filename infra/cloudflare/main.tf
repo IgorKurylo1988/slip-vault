@@ -18,7 +18,7 @@ data "cloudflare_zone" "zone" {
 # Phase 1: Static Website DNS Record (Google Cloud Storage mapping)
 resource "cloudflare_dns_record" "web_static" {
   zone_id = data.cloudflare_zone.zone.id
-  name    = var.static_subdomain
+  name    = var.root_domain
   content = "c.storage.googleapis.com"
   type    = "CNAME"
   proxied = true # Enables Cloudflare CDN caching, SSL termination, and DDoS protection

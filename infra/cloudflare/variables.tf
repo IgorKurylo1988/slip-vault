@@ -9,9 +9,9 @@ variable "cloudflare_zone_id" {
   description = "The Zone ID of your domain in Cloudflare."
 }
 
-variable "static_subdomain" {
+variable "root_domain" {
   type        = string
-  default     = "www"
+  default     = "@"
   description = "The subdomain name for the static website (e.g. 'vault' for vault.yourdomain.com)."
 }
 
