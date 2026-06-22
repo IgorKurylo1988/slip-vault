@@ -11,7 +11,7 @@ variable "cloudflare_zone_id" {
 
 variable "static_subdomain" {
   type        = string
-  default     = "slip-vault.io"
+  default     = "www"
   description = "The subdomain name for the static website (e.g. 'vault' for vault.yourdomain.com)."
 }
 
