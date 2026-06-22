@@ -41,7 +41,7 @@ jobs:
         working-directory: ${{ matrix.directory }}
 
       - name: Terraform Plan
-        run: terraform plan -out=tfplan
+        run: terraform plan -lock-timeout=5m -out=tfplan
         working-directory: ${{ matrix.directory }}
         env:
           TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -87,7 +87,7 @@ jobs:
         working-directory: ${{ matrix.directory }}
 
       - name: Terraform Apply
-        run: terraform apply -input=false tfplan
+        run: terraform apply -lock-timeout=5m -input=false tfplan
         working-directory: ${{ matrix.directory }}
         env:
           TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
