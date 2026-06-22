@@ -49,11 +49,11 @@ resource "google_compute_target_http_proxy" "web_http_proxy" {
 
 # Create a global forwarding rule to route traffic from the global IP to the proxy
 resource "google_compute_global_forwarding_rule" "web_forwarding_rule" {
-  name                  = "slip-vault-web-forwarding-rule"
-  ip_address            = google_compute_global_address.web_ip.address
-  ip_protocol           = "TCP"
-  port_range            = "80"
-  target                = google_compute_target_http_proxy.web_http_proxy.id
+  name        = "slip-vault-web-forwarding-rule"
+  ip_address  = google_compute_global_address.web_ip.address
+  ip_protocol = "TCP"
+  port_range  = "80"
+  target      = google_compute_target_http_proxy.web_http_proxy.id
 }
 
 
