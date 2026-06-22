@@ -1,9 +1,7 @@
-locals {
-  domain_name = "slip-vault.com"
-}
-# The bucket name MUST match the exact custom domain name you use in Cloudflare
+# The bucket name no longer needs to match the domain name because we use a Load Balancer.
+# Removing dots from the name bypasses Google's domain ownership verification requirement.
 resource "google_storage_bucket" "static_website" {
-  name          = local.domain_name
+  name          = "slip-vault-web-static-${var.project_id}"
   location      = var.bucket_location
   force_destroy = false # Prevents accidental deletion of the bucket and its contents
 
