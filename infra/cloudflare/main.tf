@@ -6,23 +6,36 @@ data "cloudflare_zone" "zone" {
     name = local.dns_name
   }
 }
-# resource "cloudflare_dns_record" "www" {
-#   zone_id = data.cloudflare_zone.zone.id
-#   name    = "${var.static_subdomain}.${local.dns_name}"
-#   content = local.dns_name
-#   type    = "CNAME"
-#   proxied = true
-#   ttl     = 1
-# }
 
-# Phase 1: Static Website DNS Record (Google Cloud Storage mapping)
-resource "cloudflare_dns_record" "web_static" {
+data "terraform_remote_state" "gcp_web" {
+  backend = "gcs"
+  config = {
+    bucket = "slip-vault-tf-cm-data"
+    prefix = "web"
+  }
+}
+
+# Root domain DNS record pointing to GCP Load Balancer IP
+resource "cloudflare_dns_record" "web_root" {
   zone_id = data.cloudflare_zone.zone.id
-  name    = "www"
-  content = "c.storage.googleapis.com"
-  type    = "CNAME"
-  proxied = true # Enables Cloudflare CDN caching, SSL termination, and DDoS protection
-  ttl     = 1    # Auto TTL (required when proxied is true)
+  name    = "@"
+  content = data.terraform_remote_state.gcp_web.outputs.load_balancer_ip
+  type    = "A"
+  proxied = true
+  ttl     = 1
+}
+
+# Redirect www to root domain
+resource "cloudflare_page_rule" "redirect_www_to_root" {
+  zone_id = data.cloudflare_zone.zone.id
+  target  = "www.slip-vault.com/*"
+  status  = "active"
+  actions = {
+    forwarding_url = {
+      url         = "https://slip-vault.com/$1"
+      status_code = 301
+    }
+  }
 }
 
 # Phase 2: Placeholder for API Service DNS Record (to be customized and uncommented later)

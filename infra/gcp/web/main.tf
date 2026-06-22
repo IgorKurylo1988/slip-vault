@@ -1,5 +1,5 @@
 locals {
-  domain_name = "www.slip-vault.com"
+  domain_name = "slip-vault.com"
 }
 # The bucket name MUST match the exact custom domain name you use in Cloudflare
 resource "google_storage_bucket" "static_website" {
@@ -21,6 +21,39 @@ resource "google_storage_bucket_iam_member" "public_viewer" {
   bucket = google_storage_bucket.static_website.name
   role   = "roles/storage.objectViewer"
   member = "allUsers"
+}
+
+# Reserve a global external IP address for the load balancer
+resource "google_compute_global_address" "web_ip" {
+  name = "slip-vault-web-ip"
+}
+
+# Create a backend bucket with CDN enabled for the static website
+resource "google_compute_backend_bucket" "web_backend" {
+  name        = "slip-vault-web-backend"
+  bucket_name = google_storage_bucket.static_website.name
+  enable_cdn  = true
+}
+
+# Create a URL map to route all incoming HTTP requests to the backend bucket
+resource "google_compute_url_map" "web_url_map" {
+  name            = "slip-vault-web-url-map"
+  default_service = google_compute_backend_bucket.web_backend.id
+}
+
+# Create a target HTTP proxy to route requests to the URL map
+resource "google_compute_target_http_proxy" "web_http_proxy" {
+  name    = "slip-vault-web-http-proxy"
+  url_map = google_compute_url_map.web_url_map.id
+}
+
+# Create a global forwarding rule to route traffic from the global IP to the proxy
+resource "google_compute_global_forwarding_rule" "web_forwarding_rule" {
+  name                  = "slip-vault-web-forwarding-rule"
+  ip_address            = google_compute_global_address.web_ip.address
+  ip_protocol           = "TCP"
+  port_range            = "80"
+  target                = google_compute_target_http_proxy.web_http_proxy.id
 }
 
 
