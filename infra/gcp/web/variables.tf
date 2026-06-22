@@ -9,11 +9,6 @@ variable "region" {
   description = "GCP Region for the provider setup"
 }
 
-variable "domain_name" {
-  type        = string
-  description = "The exact custom domain/subdomain name of your website (e.g., vault.yourdomain.com)"
-}
-
 variable "bucket_location" {
   type        = string
   default     = "EU"
