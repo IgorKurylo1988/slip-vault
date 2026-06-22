@@ -1,6 +1,8 @@
 
 data "cloudflare_zone" "zone" {
-  name = "slip-vault.com"
+    filter = {
+      name = "slip-vault.com"
+    }
 }
 
 # Phase 1: Static Website DNS Record (Google Cloud Storage mapping)
