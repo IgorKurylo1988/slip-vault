@@ -15,11 +15,21 @@ data "terraform_remote_state" "gcp_web" {
   }
 }
 
+# www subdomain DNS record pointing to GCP Load Balancer IP (must be proxied for page rules to work)
+resource "cloudflare_dns_record" "web_static" {
+  zone_id = data.cloudflare_zone.zone.id
+  name    = "www"
+  content = try(data.terraform_remote_state.gcp_web.outputs.load_balancer_ip, "192.0.2.1")
+  type    = "A"
+  proxied = true
+  ttl     = 1
+}
+
 # Root domain DNS record pointing to GCP Load Balancer IP
 resource "cloudflare_dns_record" "web_root" {
   zone_id = data.cloudflare_zone.zone.id
   name    = "@"
-  content = data.terraform_remote_state.gcp_web.outputs.load_balancer_ip
+  content = try(data.terraform_remote_state.gcp_web.outputs.load_balancer_ip, "192.0.2.1")
   type    = "A"
   proxied = true
   ttl     = 1
