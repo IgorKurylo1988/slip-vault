@@ -21,9 +21,17 @@ resource "google_storage_bucket_iam_member" "public_viewer" {
   member = "allUsers"
 }
 
+# Enable the Compute Engine API in the project
+resource "google_project_service" "compute" {
+  service                    = "compute.googleapis.com"
+  disable_dependent_services = false
+  disable_on_destroy         = false
+}
+
 # Reserve a global external IP address for the load balancer
 resource "google_compute_global_address" "web_ip" {
-  name = "slip-vault-web-ip"
+  name       = "slip-vault-web-ip"
+  depends_on = [google_project_service.compute]
 }
 
 # Create a backend bucket with CDN enabled for the static website
@@ -31,6 +39,7 @@ resource "google_compute_backend_bucket" "web_backend" {
   name        = "slip-vault-web-backend"
   bucket_name = google_storage_bucket.static_website.name
   enable_cdn  = true
+  depends_on  = [google_project_service.compute]
 }
 
 # Create a URL map to route all incoming HTTP requests to the backend bucket
