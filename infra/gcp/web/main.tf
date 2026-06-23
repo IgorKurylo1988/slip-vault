@@ -10,15 +10,17 @@ resource "google_storage_bucket" "static_website" {
     not_found_page   = "404.html" # Redirects missing paths to the custom 404 page (located at the root of dist after build)
   }
 
-  # Set public access prevention to inherited to allow allUsers access
-  public_access_prevention = "inherited"
+  # Enforce public access prevention to block direct public access
+  public_access_prevention = "enforced"
 }
 
-# Make all objects public-readable
-resource "google_storage_bucket_iam_member" "public_viewer" {
+data "google_project" "project" {}
+
+# Grant read access to the Cloud CDN Service Agent so only the Load Balancer can read the bucket
+resource "google_storage_bucket_iam_member" "cdn_viewer" {
   bucket = google_storage_bucket.static_website.name
   role   = "roles/storage.objectViewer"
-  member = "allUsers"
+  member = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-cloudcdn.iam.gserviceaccount.com"
 }
 
 # Enable the Compute Engine API in the project
