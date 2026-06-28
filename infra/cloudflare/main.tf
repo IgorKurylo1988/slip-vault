@@ -20,7 +20,7 @@ resource "cloudflare_pages_project" "web_app" {
 resource "cloudflare_pages_domain" "root" {
   account_id   = var.cloudflare_account_id
   project_name = cloudflare_pages_project.web_app.name
-  name       = local.dns_name
+  name         = local.dns_name
 }
 
 # DNS CNAME for root domain pointing to Pages project

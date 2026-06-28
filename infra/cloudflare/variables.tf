@@ -10,7 +10,7 @@ variable "cloudflare_zone_id" {
 }
 
 variable "cloudflare_account_id" {
-  type = string
+  type        = string
   description = "The account ID of cloudflare"
 }
 
