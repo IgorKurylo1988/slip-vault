@@ -11,7 +11,7 @@ on:
       - 'web/**'
 
 env:
-  GCP_BUCKET_NAME: 'slip-vault-web-static-${{ secrets.GCP_PROJECT_ID }}'
+  GCP_BUCKET_NAME: 'slip-vault.com'
 
 jobs:
   build:
