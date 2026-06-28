@@ -19,3 +19,7 @@ variable "region" {
   default     = "europe-central2"
   description = "GCP Region for the provider setup (used for Terraform state backend)."
 }
+variable "project_id" {
+  type    = string
+  default = "GCP project id"
+}
