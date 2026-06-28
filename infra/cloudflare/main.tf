@@ -11,7 +11,7 @@ data "cloudflare_zone" "zone" {
 
 # Create the Cloudflare Pages project
 resource "cloudflare_pages_project" "web_app" {
-  account_id        = data.cloudflare_zone.zone.account_id
+  account_id        =var.cloudflare_account_id
   name              = local.project_name
   production_branch = "main"
 }
