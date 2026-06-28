@@ -11,6 +11,9 @@ jobs:
   validate:
     name: Terraform Plan
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        directory: [infra/cloudflare/pages, infra/cloudflare/dns]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -27,36 +30,40 @@ jobs:
 
       - name: Terraform Format Check
         run: terraform fmt -check
-        working-directory: infra/cloudflare
+        working-directory: ${{ matrix.directory }}
 
       - name: Terraform Init
         run: terraform init
-        working-directory: infra/cloudflare
+        working-directory: ${{ matrix.directory }}
 
       - name: Terraform Validate
         run: terraform validate
-        working-directory: infra/cloudflare
+        working-directory: ${{ matrix.directory }}
 
       - name: Terraform Plan
         run: terraform plan -lock-timeout=5m -out=tfplan
-        working-directory: infra/cloudflare
+        working-directory: ${{ matrix.directory }}
         env:
+          TF_VAR_cloudflare_account_api_token: ${{ secrets.CLOUDFLARE_ACCOUNT_API_TOKEN }}
+          TF_VAR_cloudflare_zone_api_token: ${{ secrets.CLOUDFLARE_ZONE_API_TOKEN }}
           TF_VAR_cloudflare_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN  }}
           TF_VAR_cloudflare_zone_id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
           TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
 
       - name: Upload Plan Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: tfplan-cloudflare
-          path: infra/cloudflare/tfplan
+          name: tfplan-${{ matrix.directory == 'infra/cloudflare/pages' && 'pages' || 'dns' }}
+          path: ${{ matrix.directory }}/tfplan
 
   deploy:
     name: Terraform Apply
     needs: validate
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        directory: [infra/cloudflare/pages, infra/cloudflare/dns]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -74,18 +81,19 @@ jobs:
       - name: Download Plan Artifact
         uses: actions/download-artifact@v4
         with:
-          name: tfplan-cloudflare
-          path: infra/cloudflare
+          name: tfplan-${{ matrix.directory == 'infra/cloudflare/pages' && 'pages' || 'dns' }}
+          path: ${{ matrix.directory }}
 
       - name: Terraform Init
         run: terraform init
-        working-directory: infra/cloudflare
+        working-directory: ${{ matrix.directory }}
 
       - name: Terraform Apply
         run: terraform apply -lock-timeout=5m -input=false tfplan
-        working-directory: infra/cloudflare
+        working-directory: ${{ matrix.directory }}
         env:
-          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          TF_VAR_cloudflare_zone_id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          TF_VAR_cloudflare_account_api_token: ${{ secrets.CLOUDFLARE_ACCOUNT_API_TOKEN }}
+          TF_VAR_cloudflare_zone_api_token: ${{ secrets.CLOUDFLARE_ZONE_API_TOKEN }}
           TF_VAR_cloudflare_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          TF_VAR_cloudflare_zone_id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
           TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}

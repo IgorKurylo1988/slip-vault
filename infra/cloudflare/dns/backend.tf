@@ -1,6 +1,7 @@
 terraform {
   backend "gcs" {
     bucket = "slip-vault-tf-cm-data"
-    prefix = "cloudflare"
+    prefix = "cloudflare/dns"
+    key    = "terraform.tfstate"
   }
 }

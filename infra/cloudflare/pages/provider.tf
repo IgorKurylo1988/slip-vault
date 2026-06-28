@@ -11,9 +11,11 @@ terraform {
     }
   }
 }
+
 provider "cloudflare" {
-  api_token = var.cloudflare_api_token
+  api_token = var.cloudflare_account_api_token
 }
+
 provider "google" {
   project = var.project_id
   region  = var.region
