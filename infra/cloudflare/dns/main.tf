@@ -31,19 +31,21 @@ resource "cloudflare_ruleset" "redirect_www_to_root" {
   kind        = "zone"
   phase       = "http_request_dynamic_redirect"
 
-  rules {
+  rules = {
+    ref    = "redirect_www_to_root"
     action = "redirect"
-    action_parameters {
-      from_value {
+    action_parameters = {
+      from_value = {
         status_code = 301
-        target_url {
-          value = "https://slip-vault.com"
+        target_url = {
+          expression = "concat(\"https://slip-vault.com\", http.request.uri.path)"
         }
         preserve_query_string = true
       }
     }
     expression  = "http.host eq \"www.slip-vault.com\""
     description = "Redirect www to root"
+    enabled     = true
   }
 }
 
