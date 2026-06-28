@@ -1,6 +1,7 @@
 locals {
   dns_name     = "slip-vault.com"
   project_name = "slip-vault"
+  zone_id      = "28bd874d386cca72a78c8cd52a9da8a1"
 }
 
 data "cloudflare_zone" "zone" {
@@ -25,7 +26,7 @@ resource "cloudflare_pages_domain" "root" {
 
 # DNS CNAME for root domain pointing to Pages project
 resource "cloudflare_dns_record" "web_root" {
-  zone_id = data.cloudflare_zone.zone.id
+  zone_id = local.zone_id
   name    = "@"
   content = "${cloudflare_pages_project.web_app.name}.pages.dev"
   type    = "CNAME"
@@ -36,7 +37,7 @@ resource "cloudflare_dns_record" "web_root" {
 
 # Redirect www to root domain
 resource "cloudflare_page_rule" "redirect_www_to_root" {
-  zone_id = data.cloudflare_zone.zone.id
+  zone_id = local.zone_id
   target  = "www.slip-vault.com/*"
   status  = "active"
   actions = {
