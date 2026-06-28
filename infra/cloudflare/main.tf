@@ -4,12 +4,6 @@ locals {
   zone_id      = "28bd874d386cca72a78c8cd52a9da8a1"
 }
 
-data "cloudflare_zone" "zone" {
-  filter = {
-    name = local.dns_name
-  }
-}
-
 # Create the Cloudflare Pages project
 resource "cloudflare_pages_project" "web_app" {
   account_id        = var.cloudflare_account_id
