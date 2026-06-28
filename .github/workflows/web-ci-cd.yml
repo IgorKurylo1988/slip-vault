@@ -25,9 +25,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
+        uses: docker://node:24
+        
 
       - name: Install Dependencies
         run: npm install
