@@ -14,8 +14,7 @@ jobs:
   build:
     name: Build & Lint
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    container: node:24
     defaults:
       run:
         working-directory: ./web
@@ -23,10 +22,12 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
+      
       - name: Setup Node.js
-        uses: docker://node:24
-        
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm' # Automates dependency caching
 
       - name: Install Dependencies
         run: npm install
