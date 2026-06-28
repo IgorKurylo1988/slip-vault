@@ -14,12 +14,12 @@ resource "cloudflare_pages_project" "web_app" {
 resource "cloudflare_pages_domain" "root" {
   account_id   = var.cloudflare_account_id
   project_name = cloudflare_pages_project.web_app.name
-  name       = local.dns_name
+  name         = local.dns_name
 }
 
 # Bind the custom www subdomain to the Pages project
 resource "cloudflare_pages_domain" "www" {
   account_id   = var.cloudflare_account_id
   project_name = cloudflare_pages_project.web_app.name
-  name       = "www.${local.dns_name}"
+  name         = "www.${local.dns_name}"
 }
