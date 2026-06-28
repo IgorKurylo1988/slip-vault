@@ -11,9 +11,6 @@ jobs:
   validate:
     name: Terraform Plan
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        directory: [infra/cloudflare, infra/gcp/web]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -30,19 +27,19 @@ jobs:
 
       - name: Terraform Format Check
         run: terraform fmt -check
-        working-directory: ${{ matrix.directory }}
+        working-directory: infra/cloudflare
 
       - name: Terraform Init
         run: terraform init
-        working-directory: ${{ matrix.directory }}
+        working-directory: infra/cloudflare
 
       - name: Terraform Validate
         run: terraform validate
-        working-directory: ${{ matrix.directory }}
+        working-directory: infra/cloudflare
 
       - name: Terraform Plan
         run: terraform plan -lock-timeout=5m -out=tfplan
-        working-directory: ${{ matrix.directory }}
+        working-directory: infra/cloudflare
         env:
           TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           TF_VAR_cloudflare_zone_id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
@@ -51,17 +48,14 @@ jobs:
       - name: Upload Plan Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: tfplan-${{ matrix.directory == 'infra/cloudflare' && 'cloudflare' || 'web' }}
-          path: ${{ matrix.directory }}/tfplan
+          name: tfplan-cloudflare
+          path: infra/cloudflare/tfplan
 
   deploy:
     name: Terraform Apply
     needs: validate
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        directory: [infra/cloudflare, infra/gcp/web]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -79,16 +73,16 @@ jobs:
       - name: Download Plan Artifact
         uses: actions/download-artifact@v4
         with:
-          name: tfplan-${{ matrix.directory == 'infra/cloudflare' && 'cloudflare' || 'web' }}
-          path: ${{ matrix.directory }}
+          name: tfplan-cloudflare
+          path: infra/cloudflare
 
       - name: Terraform Init
         run: terraform init
-        working-directory: ${{ matrix.directory }}
+        working-directory: infra/cloudflare
 
       - name: Terraform Apply
         run: terraform apply -lock-timeout=5m -input=false tfplan
-        working-directory: ${{ matrix.directory }}
+        working-directory: infra/cloudflare
         env:
           TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           TF_VAR_cloudflare_zone_id: ${{ secrets.CLOUDFLARE_ZONE_ID }}

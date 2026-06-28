@@ -9,17 +9,11 @@ variable "cloudflare_zone_id" {
   description = "The Zone ID of your domain in Cloudflare."
 }
 
-
-
-variable "gcs_cname_target" {
-  type        = string
-  default     = "c.storage.googleapis.com"
-  description = "The CNAME target endpoint for GCS static hosting."
+variable "cloudflare_account_id" {
+  type = string
+  description = "The account ID of cloudflare"
 }
-variable "project_id" {
-  type        = string
-  description = "The Google Cloud Project ID (used for GCS bucket and Terraform state backend)."
-}
+
 variable "region" {
   type        = string
   default     = "europe-central2"

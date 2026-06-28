@@ -5,16 +5,8 @@ terraform {
       source  = "cloudflare/cloudflare"
       version = "~> 5.0"
     }
-    google = {
-      source  = "hashicorp/google"
-      version = "~> 5.0"
-    }
   }
 }
 provider "cloudflare" {
   api_token = var.cloudflare_api_token
-}
-provider "google" {
-  project = var.project_id
-  region  = var.region
 }

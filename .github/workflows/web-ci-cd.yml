@@ -10,9 +10,6 @@ on:
     paths:
       - 'web/**'
 
-env:
-  GCP_BUCKET_NAME: 'slip-vault.com'
-
 jobs:
   build:
     name: Build & Lint
@@ -48,32 +45,22 @@ jobs:
           path: web/dist
 
   deploy:
-    name: Deploy to GCS
+    name: Deploy to Cloudflare Pages
     needs: build
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
       - name: Download Build Artifact
         uses: actions/download-artifact@v4
         with:
           name: dist
           path: dist
-        
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-      - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-      - name: Upload to GCS Bucket
-        uses: google-github-actions/upload-cloud-storage@v2
-        with:
-          path: dist
-          parent: false
-          bucket: ${{ env.GCP_BUCKET_NAME }}
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: 'slip-vault'
+          directory: 'dist'
