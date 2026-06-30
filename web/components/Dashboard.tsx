@@ -1,8 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { InvoiceData } from '../types';
 import InvoiceListItem from './InvoiceListItem';
 import Button from './Button';
 import { Scan, Upload, CreditCard, Receipt, List, Search as SearchIcon, X } from 'lucide-react';
+
+type FilterType = 'ALL' | 'INVOICE' | 'CREDIT_INVOICE';
 
 interface DashboardProps {
   invoices: InvoiceData[];
@@ -11,9 +13,11 @@ interface DashboardProps {
   onUploadClick: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onInvoiceClick: (invoice: InvoiceData) => void;
   AppLogo: React.FC;
+  filter: FilterType;
+  setFilter: (filter: FilterType) => void;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
 }
-
-type FilterType = 'ALL' | 'INVOICE' | 'CREDIT_INVOICE';
 
 const Dashboard: React.FC<DashboardProps> = ({ 
   invoices, 
@@ -21,16 +25,19 @@ const Dashboard: React.FC<DashboardProps> = ({
   onScanClick, 
   onUploadClick, 
   onInvoiceClick,
-  AppLogo
+  AppLogo,
+  filter,
+  setFilter,
+  searchQuery,
+  setSearchQuery
 }) => {
-  const [filter, setFilter] = useState<FilterType>('ALL');
-  const [searchQuery, setSearchQuery] = useState('');
-
   const stats = useMemo(() => {
     const credits = invoices.filter(i => i.type === 'CREDIT_INVOICE');
     const totalCredits = credits.reduce((acc, curr) => acc + curr.totalAmount, 0);
-    const currency = credits[0]?.currency || '₪';
-    return { count: invoices.length, creditCount: credits.length, creditTotal: totalCredits, currency };
+    const invoicesOnly = invoices.filter(i => i.type === 'INVOICE' || i.type === 'RECEIPT');
+    const totalSpend = invoicesOnly.reduce((acc, curr) => acc + curr.totalAmount, 0);
+    const currency = invoices[0]?.currency || '₪';
+    return { count: invoices.length, creditCount: credits.length, creditTotal: totalCredits, totalSpend, currency };
   }, [invoices]);
 
   const filteredInvoices = useMemo(() => {
@@ -43,7 +50,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   }, [invoices, filter, searchQuery]);
 
   return (
-    <div className="w-full h-full bg-slate-50 flex flex-col max-w-lg mx-auto shadow-2xl relative">
+    <div className="w-full h-full bg-slate-50 flex flex-col md:max-w-none md:shadow-none relative">
       
       {/* Header Section */}
       <div className="bg-white px-6 pt-8 pb-4 rounded-b-[2.5rem] shadow-sm z-10 flex flex-col shrink-0">
@@ -55,24 +62,37 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <p className="text-slate-400 text-[10px] uppercase font-bold tracking-widest mt-1">Digital Receipt Vault</p>
               </div>
             </div>
-            
-            <div className="bg-blue-600 text-white px-4 py-2 rounded-2xl shadow-lg shadow-blue-200 flex flex-col items-end">
-               <span className="text-[9px] uppercase font-bold opacity-80 leading-none">Credit Balance</span>
-               <div className="text-lg font-black leading-tight">
-                 {stats.currency}{stats.creditTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-               </div>
+         </div>
+         
+         {/* Mobile Metrics (Total Documents, Total Spends, Credit Balance) */}
+         <div className="grid grid-cols-3 gap-2 mb-4 md:hidden border-t border-slate-100 pt-4">
+            <div className="bg-slate-50 p-2.5 rounded-xl flex flex-col">
+              <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider whitespace-nowrap">Documents</span>
+              <span className="text-sm font-black text-slate-800">{stats.count}</span>
+            </div>
+            <div className="bg-slate-50 p-2.5 rounded-xl flex flex-col">
+              <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider whitespace-nowrap">Total Spend</span>
+              <span className="text-sm font-black text-emerald-600 truncate">
+                {stats.currency}{stats.totalSpend.toLocaleString(undefined, { minimumFractionDigits: 0 })}
+              </span>
+            </div>
+            <div className="bg-slate-50 p-2.5 rounded-xl flex flex-col">
+              <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider whitespace-nowrap">Credit Bal</span>
+              <span className="text-sm font-black text-blue-600 truncate">
+                {stats.currency}{stats.creditTotal.toLocaleString(undefined, { minimumFractionDigits: 0 })}
+              </span>
             </div>
          </div>
 
-         {/* Search Bar */}
-         <div className="relative mb-4">
+         {/* Search Bar (Mobile only) */}
+         <div className="relative mb-4 md:hidden">
             <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input 
-              type="text"
-              placeholder="Search store or invoice #..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-11 pl-10 pr-10 bg-slate-100 border-none rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 transition-all outline-none"
+               type="text"
+               placeholder="Search store or invoice #..."
+               value={searchQuery}
+               onChange={(e) => setSearchQuery(e.target.value)}
+               className="w-full h-11 pl-10 pr-10 bg-slate-100 border-none rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 transition-all outline-none"
             />
             {searchQuery && (
               <button 
@@ -90,7 +110,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               fullWidth 
               variant="primary"
               icon={<Scan size={18} />}
-              className="h-11 text-sm"
+              className="h-11 text-sm md:hidden"
             >
               Scan New
             </Button>
@@ -105,7 +125,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 fullWidth 
                 variant="secondary"
                 icon={<Upload size={18} />}
-                className="h-11 w-full text-sm"
+                className="h-11 w-full text-sm font-semibold"
               >
                 Upload
               </Button>
@@ -167,8 +187,8 @@ const Dashboard: React.FC<DashboardProps> = ({
       {/* Bottom Status Bar */}
       <div className="absolute bottom-0 left-0 w-full bg-white/90 backdrop-blur-md border-t border-slate-100 p-4 flex justify-between items-center z-10 px-6">
          <div className="flex items-center gap-2">
-           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-           <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Encrypted Storage</span>
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Encrypted Storage</span>
          </div>
          <span className="text-[9px] font-bold text-slate-300 uppercase tracking-tight">{filteredInvoices.length} Items Listed</span>
       </div>

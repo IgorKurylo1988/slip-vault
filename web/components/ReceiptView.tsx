@@ -167,32 +167,66 @@ const ReceiptView: React.FC<ReceiptViewProps> = ({
 
             {/* Items List */}
             <div className="p-6 bg-white min-h-[100px]">
-                <div className="flex justify-between text-[10px] font-bold text-gray-400 mb-4 uppercase tracking-wider">
-                  <span>Item Description</span>
-                  <span>Amount</span>
-                </div>
-                <div className="space-y-5">
-                    {data.items.map((item, idx) => (
-                        <div key={idx} className="flex justify-between items-start text-sm group">
-                            <div className="flex-1 pr-4">
-                                <span className="text-gray-900 font-semibold block leading-snug">{item.name}</span>
-                                <div className="flex flex-wrap items-center gap-2 text-gray-400 text-xs mt-1">
-                                  {item.sku && (
-                                    <span className="font-mono bg-slate-50 border border-slate-100 px-1.5 py-0.5 rounded text-[10px] tracking-tight text-slate-500">
-                                      #{item.sku}
-                                    </span>
-                                  )}
-                                  <span>x{item.quantity}</span>
+                {/* Mobile View List */}
+                <div className="md:hidden">
+                    <div className="flex justify-between text-[10px] font-bold text-gray-400 mb-4 uppercase tracking-wider">
+                      <span>Item Description</span>
+                      <span>Amount</span>
+                    </div>
+                    <div className="space-y-5">
+                        {data.items.map((item, idx) => (
+                            <div key={idx} className="flex justify-between items-start text-sm group">
+                                <div className="flex-1 pr-4">
+                                    <span className="text-gray-900 font-semibold block leading-snug">{item.name}</span>
+                                    <div className="flex flex-wrap items-center gap-2 text-gray-400 text-xs mt-1">
+                                      {item.sku && (
+                                        <span className="font-mono bg-slate-50 border border-slate-100 px-1.5 py-0.5 rounded text-[10px] tracking-tight text-slate-500">
+                                          #{item.sku}
+                                        </span>
+                                      )}
+                                      <span>x{item.quantity}</span>
+                                    </div>
                                 </div>
+                                <span className="text-gray-700 font-semibold whitespace-nowrap">
+                                    {data.currency}{item.price.toFixed(2)}
+                                </span>
                             </div>
-                            <span className="text-gray-700 font-semibold whitespace-nowrap">
-                                {data.currency}{item.price.toFixed(2)}
-                            </span>
-                        </div>
-                    ))}
-                    {data.items.length === 0 && (
-                        <p className="text-gray-400 text-center text-sm italic py-4">No item details detected.</p>
-                    )}
+                        ))}
+                        {data.items.length === 0 && (
+                            <p className="text-gray-400 text-center text-sm italic py-4">No item details detected.</p>
+                        )}
+                    </div>
+                </div>
+
+                {/* Desktop View Table */}
+                <div className="hidden md:block overflow-hidden rounded-xl border border-slate-100 shadow-sm bg-white">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-100">
+                        <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Item Description</th>
+                        <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">SKU</th>
+                        <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider text-center">Qty</th>
+                        <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">Price</th>
+                        <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {data.items.map((item, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50/50 transition-colors text-sm">
+                          <td className="px-4 py-3.5 font-semibold text-slate-800">{item.name}</td>
+                          <td className="px-4 py-3.5 font-mono text-xs text-slate-500">{item.sku || '-'}</td>
+                          <td className="px-4 py-3.5 text-center text-slate-600">{item.quantity}</td>
+                          <td className="px-4 py-3.5 text-right text-slate-600">{data.currency}{item.price.toFixed(2)}</td>
+                          <td className="px-4 py-3.5 text-right font-bold text-slate-800">{data.currency}{(item.price * item.quantity).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                      {data.items.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-8 text-center text-slate-400 italic">No item details detected.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
 
                 {/* Totals */}
