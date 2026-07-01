@@ -7,7 +7,7 @@ import CameraCapture from './components/CameraCapture';
 import ReceiptView from './components/ReceiptView';
 import Dashboard from './components/Dashboard';
 import Button from './components/Button';
-import { Loader2, Search, X, CreditCard, Receipt, FileText, Eye } from 'lucide-react';
+import { Loader2, Search, X, CreditCard, Receipt, FileText, Eye, Sun, Moon } from 'lucide-react';
 
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>(AppState.IDLE);
@@ -18,6 +18,26 @@ const App: React.FC = () => {
   // Lifted filters/search state
   const [filter, setFilter] = useState<'ALL' | 'INVOICE' | 'CREDIT_INVOICE'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Theme state
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark' || saved === 'light') return saved;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
   
   // Loading states
   const [isLoadingInvoices, setIsLoadingInvoices] = useState(false);
@@ -179,13 +199,13 @@ const App: React.FC = () => {
   );
 
   return (
-    <div className="h-full w-full bg-slate-100 flex overflow-hidden">
+    <div className="h-full w-full bg-slate-100 flex overflow-hidden dark:bg-slate-950">
       
       {/* Dashboard & Viewer Wrapper (active for IDLE and VIEWING states) */}
       {(state === AppState.IDLE || state === AppState.VIEWING) && (
         <div className="flex-1 flex h-full w-full overflow-hidden">
           {/* Left Panel: Dashboard / Sidebar on desktop */}
-          <div className={`h-full w-full md:w-[350px] md:shrink-0 md:border-r md:border-slate-200 ${state === AppState.IDLE ? 'block' : 'hidden md:block'}`}>
+          <div className={`h-full w-full md:w-[350px] md:shrink-0 md:border-r md:border-slate-200 dark:border-slate-800 ${state === AppState.IDLE ? 'block' : 'hidden md:block'}`}>
             <Dashboard 
               invoices={invoices}
               isLoading={isLoadingInvoices}
@@ -197,15 +217,17 @@ const App: React.FC = () => {
               setFilter={setFilter}
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
+              theme={theme}
+              toggleTheme={toggleTheme}
             />
           </div>
 
           {/* Right/Center Panel: Search Invoice and Receipt Table or Dashboard Metrics */}
-          <div className="h-full flex-1 bg-slate-50 flex flex-col overflow-hidden">
+          <div className="h-full flex-1 bg-slate-50 flex flex-col overflow-hidden dark:bg-slate-950">
             {/* Desktop Only Center Search Header */}
-            <div className="hidden md:block w-full bg-white border-b border-slate-150 py-5 px-8 shadow-sm shrink-0">
+            <div className="hidden md:block w-full bg-white border-b border-slate-200 py-5 px-8 shadow-sm shrink-0 dark:bg-slate-900 dark:border-slate-800">
                <div className="max-w-4xl mx-auto flex items-center justify-between">
-                 <h2 className="text-lg font-bold text-slate-800">Workspace Dashboard</h2>
+                 <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Workspace Dashboard</h2>
                  <div className="relative w-full max-w-md shadow-sm">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input 
@@ -213,12 +235,12 @@ const App: React.FC = () => {
                        placeholder="Search stores, date, invoice #..."
                        value={searchQuery}
                        onChange={(e) => setSearchQuery(e.target.value)}
-                       className="w-full h-10 pl-11 pr-11 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 transition-all outline-none"
+                       className="w-full h-10 pl-11 pr-11 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 transition-all outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
                     />
                     {searchQuery && (
                       <button 
                         onClick={() => setSearchQuery('')}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-slate-500"
                       >
                         <X size={16} />
                       </button>
@@ -232,7 +254,7 @@ const App: React.FC = () => {
               {state === AppState.VIEWING && invoiceData ? (
                 /* Selected Receipt detail container (large table on desktop) */
                 <div className="w-full h-full md:max-w-3xl md:mx-auto md:py-6 md:px-4 md:flex md:flex-col animate-in fade-in duration-300">
-                  <div className="w-full h-full md:shadow-2xl md:rounded-3xl md:overflow-hidden md:border md:border-slate-200/50 md:flex md:flex-col">
+                  <div className="w-full h-full md:shadow-2xl md:rounded-3xl md:overflow-hidden md:border md:border-slate-200/50 dark:md:border-slate-800 md:flex md:flex-col">
                     <ReceiptView 
                       data={invoiceData} 
                       onSave={handleSaveInvoice}
@@ -249,11 +271,11 @@ const App: React.FC = () => {
                 <div className="w-full h-full md:flex md:flex-col">
                   {/* Mobile Empty State */}
                   <div className="md:hidden text-center p-8 max-w-sm mx-auto mt-20">
-                    <div className="w-16 h-16 bg-white rounded-2xl shadow-md flex items-center justify-center mx-auto mb-4 text-emerald-500">
+                    <div className="w-16 h-16 bg-white rounded-2xl shadow-md flex items-center justify-center mx-auto mb-4 text-emerald-500 dark:bg-slate-900">
                       <Search className="w-8 h-8 animate-pulse" />
                     </div>
-                    <h3 className="text-lg font-bold text-slate-800">No Receipt Selected</h3>
-                    <p className="text-sm text-slate-400 mt-2">
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">No Receipt Selected</h3>
+                    <p className="text-sm text-slate-400 mt-2 dark:text-slate-500">
                       Select an invoice or receipt from the list to view its detailed breakdown.
                     </p>
                   </div>
@@ -262,35 +284,35 @@ const App: React.FC = () => {
                   <div className="hidden md:flex flex-col flex-1 p-8 max-w-5xl mx-auto w-full">
                     {/* Metrics Grid */}
                     <div className="grid grid-cols-3 gap-6 mb-8 mt-2">
-                      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition-shadow">
-                        <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-slate-600">
+                      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 dark:bg-slate-900 dark:border-slate-800 flex items-center gap-4 hover:shadow-md transition-shadow">
+                        <div className="w-12 h-12 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400">
                           <FileText size={22} />
                         </div>
                         <div>
-                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Total Documents</span>
-                          <span className="text-2xl font-black text-slate-800">{stats.count}</span>
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider block">Total Documents</span>
+                          <span className="text-2xl font-black text-slate-800 dark:text-slate-100">{stats.count}</span>
                         </div>
                       </div>
                       
-                      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition-shadow">
-                        <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+                      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 dark:bg-slate-900 dark:border-slate-800 flex items-center gap-4 hover:shadow-md transition-shadow">
+                        <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                           <Receipt size={22} />
                         </div>
                         <div>
-                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Total Spends</span>
-                          <span className="text-2xl font-black text-emerald-600">
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider block">Total Spends</span>
+                          <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
                             {stats.currency}{stats.totalSpend.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                           </span>
                         </div>
                       </div>
 
-                      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition-shadow">
-                        <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+                      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 dark:bg-slate-900 dark:border-slate-800 flex items-center gap-4 hover:shadow-md transition-shadow">
+                        <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
                           <CreditCard size={22} />
                         </div>
                         <div>
-                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Credit Balance</span>
-                          <span className="text-2xl font-black text-blue-600">
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider block">Credit Balance</span>
+                          <span className="text-2xl font-black text-blue-600 dark:text-blue-400">
                             {stats.currency}{stats.creditTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                           </span>
                         </div>
@@ -298,63 +320,63 @@ const App: React.FC = () => {
                     </div>
 
                     {/* Receipt Table */}
-                    <div className="bg-white rounded-2xl border border-slate-150 shadow-sm overflow-hidden flex-1 flex flex-col">
-                      <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                        <h3 className="font-extrabold text-slate-800 text-sm uppercase tracking-wide">Receipts & Invoices</h3>
-                        <span className="text-xs bg-slate-200 text-slate-700 font-bold px-2.5 py-1 rounded-full">
+                    <div className="bg-white rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex-1 flex flex-col dark:bg-slate-900">
+                      <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-850 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
+                        <h3 className="font-extrabold text-slate-800 text-sm uppercase tracking-wide dark:text-slate-200">Receipts & Invoices</h3>
+                        <span className="text-xs bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-350 font-bold px-2.5 py-1 rounded-full">
                           {desktopFilteredInvoices.length} Matching
                         </span>
                       </div>
                       
                       <div className="overflow-y-auto flex-1 no-scrollbar">
                         <table className="w-full text-left border-collapse">
-                          <thead className="sticky top-0 bg-white z-10 border-b border-slate-100">
+                          <thead className="sticky top-0 bg-white z-10 border-b border-slate-100 dark:bg-slate-900 dark:border-slate-800">
                             <tr>
-                              <th className="px-6 py-3.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Store</th>
-                              <th className="px-6 py-3.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Invoice #</th>
-                              <th className="px-6 py-3.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Date</th>
-                              <th className="px-6 py-3.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Type</th>
-                              <th className="px-6 py-3.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-right">Amount</th>
-                              <th className="px-6 py-3.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Action</th>
+                              <th className="px-6 py-3.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Store</th>
+                              <th className="px-6 py-3.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Invoice #</th>
+                              <th className="px-6 py-3.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Date</th>
+                              <th className="px-6 py-3.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Type</th>
+                              <th className="px-6 py-3.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-right">Amount</th>
+                              <th className="px-6 py-3.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-center">Action</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-slate-50">
+                          <tbody className="divide-y divide-slate-50 dark:divide-slate-850">
                             {isLoadingInvoices ? (
                               [1, 2, 3].map(i => (
                                 <tr key={i} className="animate-pulse">
-                                  <td colSpan={6} className="px-6 py-5"><div className="h-4 bg-slate-100 rounded"></div></td>
+                                  <td colSpan={6} className="px-6 py-5"><div className="h-4 bg-slate-100 dark:bg-slate-800 rounded"></div></td>
                                 </tr>
                               ))
                             ) : desktopFilteredInvoices.length === 0 ? (
                               <tr>
-                                <td colSpan={6} className="px-6 py-12 text-center text-slate-400 italic">No receipts found matching search/filter criteria.</td>
+                                <td colSpan={6} className="px-6 py-12 text-center text-slate-400 dark:text-slate-500 italic">No receipts found matching search/filter criteria.</td>
                               </tr>
                             ) : (
                               desktopFilteredInvoices.map((inv) => (
                                 <tr 
                                   key={inv.id} 
                                   onClick={() => handleViewInvoice(inv)}
-                                  className="hover:bg-slate-50/50 cursor-pointer transition-colors group text-sm"
+                                  className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 cursor-pointer transition-colors group text-sm"
                                 >
-                                  <td className="px-6 py-4 font-bold text-slate-800">{inv.storeName}</td>
-                                  <td className="px-6 py-4 font-mono text-xs text-slate-500">{inv.invoiceNumber || '-'}</td>
-                                  <td className="px-6 py-4 text-slate-600">{inv.date}</td>
+                                  <td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-100">{inv.storeName}</td>
+                                  <td className="px-6 py-4 font-mono text-xs text-slate-500 dark:text-slate-400">{inv.invoiceNumber || '-'}</td>
+                                  <td className="px-6 py-4 text-slate-600 dark:text-slate-350">{inv.date}</td>
                                   <td className="px-6 py-4">
                                     {inv.type === 'CREDIT_INVOICE' ? (
-                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-bold rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-bold rounded-full bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-900/50">
                                         <CreditCard size={11} /> Credit
                                       </span>
                                     ) : (
-                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-900/50">
                                         <Receipt size={11} /> Invoice
                                       </span>
                                     )}
                                   </td>
-                                  <td className={`px-6 py-4 text-right font-bold ${inv.type === 'CREDIT_INVOICE' ? 'text-blue-600' : 'text-slate-800'}`}>
+                                  <td className={`px-6 py-4 text-right font-bold ${inv.type === 'CREDIT_INVOICE' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-800 dark:text-slate-100'}`}>
                                     {inv.type === 'CREDIT_INVOICE' ? '-' : ''}{inv.currency}{inv.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                   </td>
                                   <td className="px-6 py-4 text-center">
-                                    <button className="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-50 text-slate-500 group-hover:bg-slate-800 group-hover:text-white transition-colors">
+                                    <button className="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-50 text-slate-500 group-hover:bg-slate-800 group-hover:text-white dark:bg-slate-800 dark:text-slate-400 dark:group-hover:bg-slate-100 dark:group-hover:text-slate-900 transition-colors">
                                       View
                                     </button>
                                   </td>

@@ -98,7 +98,7 @@ const ReceiptView: React.FC<ReceiptViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-100 overflow-hidden relative">
+    <div className="flex flex-col h-full bg-slate-100 dark:bg-slate-950 overflow-hidden relative">
       <div className={`absolute top-0 left-0 w-full h-56 ${headerBgClass} rounded-b-[3rem] z-0 transition-all duration-300 shadow-lg`} />
       
       <div className="relative z-10 flex-1 overflow-y-auto pt-6 px-4 pb-40 no-scrollbar">
@@ -140,20 +140,20 @@ const ReceiptView: React.FC<ReceiptViewProps> = ({
         </div>
 
         {/* Receipt Card - Wrapped in a ref for screenshotting */}
-        <div ref={receiptRef} className="bg-white rounded-2xl shadow-xl overflow-hidden mb-8 animate-[slideUp_0.4s_ease-out] mx-1 relative">
+        <div ref={receiptRef} className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl overflow-hidden mb-8 animate-[slideUp_0.4s_ease-out] mx-1 relative">
             {/* Header Section */}
-            <div className="p-6 text-center border-b border-dashed border-gray-200 bg-white">
+            <div className="p-6 text-center border-b border-dashed border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                 <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl shadow-sm ${iconBgClass}`}>
                    {isCredit ? '💳' : '🛍️'}
                 </div>
-                <h1 className="text-xl font-bold text-gray-900 leading-tight">{data.storeName || "Unknown Store"}</h1>
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white leading-tight">{data.storeName || "Unknown Store"}</h1>
                 {data.storeAddress && (
-                  <div className="flex items-center justify-center gap-1 text-xs text-gray-500 mt-1">
+                  <div className="flex items-center justify-center gap-1 text-xs text-gray-500 dark:text-slate-400 mt-1">
                     <MapPin size={12} />
                     <span className="truncate max-w-[200px]">{data.storeAddress}</span>
                   </div>
                 )}
-                <div className="flex items-center justify-center gap-3 mt-3 text-xs font-medium text-gray-400">
+                <div className="flex items-center justify-center gap-3 mt-3 text-xs font-medium text-gray-400 dark:text-slate-500">
                   <span>{data.date || "Date Unknown"}</span>
                   {data.time && <span>• {data.time}</span>}
                 </div>
@@ -166,10 +166,10 @@ const ReceiptView: React.FC<ReceiptViewProps> = ({
             </div>
 
             {/* Items List */}
-            <div className="p-6 bg-white min-h-[100px]">
+            <div className="p-6 bg-white dark:bg-slate-900 min-h-[100px]">
                 {/* Mobile View List */}
                 <div className="md:hidden">
-                    <div className="flex justify-between text-[10px] font-bold text-gray-400 mb-4 uppercase tracking-wider">
+                    <div className="flex justify-between text-[10px] font-bold text-gray-400 dark:text-slate-500 mb-4 uppercase tracking-wider">
                       <span>Item Description</span>
                       <span>Amount</span>
                     </div>
@@ -177,52 +177,52 @@ const ReceiptView: React.FC<ReceiptViewProps> = ({
                         {data.items.map((item, idx) => (
                             <div key={idx} className="flex justify-between items-start text-sm group">
                                 <div className="flex-1 pr-4">
-                                    <span className="text-gray-900 font-semibold block leading-snug">{item.name}</span>
-                                    <div className="flex flex-wrap items-center gap-2 text-gray-400 text-xs mt-1">
+                                    <span className="text-gray-900 dark:text-slate-100 font-semibold block leading-snug">{item.name}</span>
+                                    <div className="flex flex-wrap items-center gap-2 text-gray-400 dark:text-slate-500 text-xs mt-1">
                                       {item.sku && (
-                                        <span className="font-mono bg-slate-50 border border-slate-100 px-1.5 py-0.5 rounded text-[10px] tracking-tight text-slate-500">
+                                        <span className="font-mono bg-slate-50 border border-slate-100 dark:bg-slate-800 dark:border-slate-700/50 px-1.5 py-0.5 rounded text-[10px] tracking-tight text-slate-500 dark:text-slate-400">
                                           #{item.sku}
                                         </span>
                                       )}
                                       <span>x{item.quantity}</span>
                                     </div>
                                 </div>
-                                <span className="text-gray-700 font-semibold whitespace-nowrap">
+                                <span className="text-gray-700 dark:text-slate-300 font-semibold whitespace-nowrap">
                                     {data.currency}{item.price.toFixed(2)}
                                 </span>
                             </div>
                         ))}
                         {data.items.length === 0 && (
-                            <p className="text-gray-400 text-center text-sm italic py-4">No item details detected.</p>
+                            <p className="text-gray-400 dark:text-slate-500 text-center text-sm italic py-4">No item details detected.</p>
                         )}
                     </div>
                 </div>
 
                 {/* Desktop View Table */}
-                <div className="hidden md:block overflow-hidden rounded-xl border border-slate-100 shadow-sm bg-white">
+                <div className="hidden md:block overflow-hidden rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="bg-slate-50 border-b border-slate-100">
-                        <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Item Description</th>
-                        <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">SKU</th>
-                        <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider text-center">Qty</th>
-                        <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">Price</th>
-                        <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">Total</th>
+                      <tr className="bg-slate-50 border-b border-slate-100 dark:bg-slate-950 dark:border-slate-800">
+                        <th className="px-4 py-3 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Item Description</th>
+                        <th className="px-4 py-3 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">SKU</th>
+                        <th className="px-4 py-3 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-center">Qty</th>
+                        <th className="px-4 py-3 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-right">Price</th>
+                        <th className="px-4 py-3 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-right">Total</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-50">
+                    <tbody className="divide-y divide-slate-50 dark:divide-slate-850">
                       {data.items.map((item, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50/50 transition-colors text-sm">
-                          <td className="px-4 py-3.5 font-semibold text-slate-800">{item.name}</td>
-                          <td className="px-4 py-3.5 font-mono text-xs text-slate-500">{item.sku || '-'}</td>
-                          <td className="px-4 py-3.5 text-center text-slate-600">{item.quantity}</td>
-                          <td className="px-4 py-3.5 text-right text-slate-600">{data.currency}{item.price.toFixed(2)}</td>
-                          <td className="px-4 py-3.5 text-right font-bold text-slate-800">{data.currency}{(item.price * item.quantity).toFixed(2)}</td>
+                        <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors text-sm">
+                          <td className="px-4 py-3.5 font-semibold text-slate-800 dark:text-slate-100">{item.name}</td>
+                          <td className="px-4 py-3.5 font-mono text-xs text-slate-500 dark:text-slate-400">{item.sku || '-'}</td>
+                          <td className="px-4 py-3.5 text-center text-slate-600 dark:text-slate-350">{item.quantity}</td>
+                          <td className="px-4 py-3.5 text-right text-slate-600 dark:text-slate-350">{data.currency}{item.price.toFixed(2)}</td>
+                          <td className="px-4 py-3.5 text-right font-bold text-slate-800 dark:text-slate-100">{data.currency}{(item.price * item.quantity).toFixed(2)}</td>
                         </tr>
                       ))}
                       {data.items.length === 0 && (
                         <tr>
-                          <td colSpan={5} className="px-4 py-8 text-center text-slate-400 italic">No item details detected.</td>
+                          <td colSpan={5} className="px-4 py-8 text-center text-slate-400 dark:text-slate-500 italic">No item details detected.</td>
                         </tr>
                       )}
                     </tbody>
@@ -230,22 +230,22 @@ const ReceiptView: React.FC<ReceiptViewProps> = ({
                 </div>
 
                 {/* Totals */}
-                <div className="mt-8 pt-4 border-t border-gray-100 space-y-2">
+                <div className="mt-8 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
                     {data.subtotal && (
                       <div className="flex justify-between items-center">
-                          <span className="text-gray-500 text-sm">Subtotal</span>
-                          <span className="text-gray-900 font-medium">{data.currency}{data.subtotal.toFixed(2)}</span>
+                          <span className="text-gray-500 dark:text-slate-400 text-sm">Subtotal</span>
+                          <span className="text-gray-900 dark:text-slate-200 font-medium">{data.currency}{data.subtotal.toFixed(2)}</span>
                       </div>
                     )}
                     {data.tax && (
                       <div className="flex justify-between items-center">
-                          <span className="text-gray-500 text-sm">VAT / Tax</span>
-                          <span className="text-gray-900 font-medium">{data.currency}{data.tax.toFixed(2)}</span>
+                          <span className="text-gray-500 dark:text-slate-400 text-sm">VAT / Tax</span>
+                          <span className="text-gray-900 dark:text-slate-200 font-medium">{data.currency}{data.tax.toFixed(2)}</span>
                       </div>
                     )}
                     
-                    <div className="flex justify-between items-center pt-4 border-t-2 border-dashed border-gray-200 mt-4">
-                        <span className="text-lg font-bold text-gray-900">
+                    <div className="flex justify-between items-center pt-4 border-t-2 border-dashed border-slate-200 dark:border-slate-850 mt-4">
+                        <span className="text-lg font-bold text-gray-900 dark:text-white">
                           {isCredit ? 'Refund Amount' : 'Total'}
                         </span>
                         <span className={`text-3xl font-bold ${totalTextClass}`}>
@@ -256,21 +256,21 @@ const ReceiptView: React.FC<ReceiptViewProps> = ({
             </div>
 
             {/* Barcode Section */}
-            <div className="bg-slate-50 p-6 flex flex-col items-center border-t border-slate-100">
+            <div className="bg-slate-50 dark:bg-slate-950 p-6 flex flex-col items-center border-t border-slate-100 dark:border-slate-850">
                 <Barcode value={data.invoiceNumber || "INV-MISSING"} />
-                <div className="flex items-center gap-2 mt-4 text-emerald-600 text-[10px] uppercase font-bold tracking-wider bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+                <div className="flex items-center gap-2 mt-4 text-emerald-600 dark:text-emerald-400 text-[10px] uppercase font-bold tracking-wider bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1 rounded-full border border-emerald-100 dark:border-emerald-900/30">
                     <CheckCircle size={12} />
                     Verified by Gemini AI
                 </div>
             </div>
 
             {/* Jagged Edge Effect */}
-            <div className="jagged-edge-bottom mt-[-1px] relative z-10 from-slate-50 to-slate-50"></div>
+            <div className="jagged-edge-bottom mt-[-1px] relative z-10 from-slate-50 to-slate-50 dark:from-slate-950 dark:to-slate-950"></div>
         </div>
       </div>
 
       {/* Footer Actions */}
-      <div className="absolute bottom-0 left-0 w-full bg-white border-t border-gray-100 p-4 pb-6 z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.05)] flex flex-col gap-3">
+      <div className="absolute bottom-0 left-0 w-full bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 p-4 pb-6 z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.05)] flex flex-col gap-3">
         {isSaved ? (
           <div className="flex gap-3">
             <Button onClick={onClose} variant="secondary" className="px-4 min-w-[3rem]">
