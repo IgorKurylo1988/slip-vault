@@ -60,6 +60,13 @@ const Dashboard: React.FC<DashboardProps> = ({
       <div className="bg-white px-6 pt-8 pb-4 rounded-b-[2.5rem] shadow-sm z-10 flex flex-col shrink-0 dark:bg-slate-900 dark:border-b dark:border-slate-800">
          <div className="flex items-center justify-between w-full mb-6">
             <div className="flex items-center gap-3">
+              <button 
+                onClick={toggleTheme}
+                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 transition-colors"
+                title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              >
+                {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+              </button>
               <div className="scale-75 origin-left"><AppLogo /></div>
               <div className="flex flex-col">
                 <h1 className="text-xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight leading-none">Slip Vault</h1>
@@ -204,13 +211,6 @@ const Dashboard: React.FC<DashboardProps> = ({
          </div>
          
          <div className="flex items-center gap-3">
-            <button 
-              onClick={toggleTheme}
-              className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 transition-colors"
-              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            >
-              {theme === 'dark' ? <Sun size={12} /> : <Moon size={12} />}
-            </button>
             <span className="text-[9px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-tight">{filteredInvoices.length} Items Listed</span>
          </div>
       </div>
