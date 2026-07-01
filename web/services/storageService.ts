@@ -1,6 +1,12 @@
 import { InvoiceData } from "../types";
 
-const API_URL = 'http://localhost:8000/api/invoices';
+const getApiUrl = (path: string) => {
+  const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const base = isLocal ? 'http://localhost:8000' : window.location.origin;
+  return `${base}${path}`;
+};
+
+const API_URL = getApiUrl('/api/invoices');
 
 export const fetchInvoices = async (): Promise<InvoiceData[]> => {
   const response = await fetch(API_URL);

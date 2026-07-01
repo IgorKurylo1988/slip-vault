@@ -5,10 +5,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Slip Vault</title>
-  <link rel="icon" type="image/png" href="assets/image.png" />
-  <link rel="apple-touch-icon" href="assets/image.png" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/favicon.svg" />
   <meta name="theme-color" content="#10b981" />
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class'
+    }
+  </script>
   <style>
     /* Custom utility for a receipt-like jagged edge */
     .jagged-edge {
@@ -52,7 +57,6 @@
   }
 }
 </script>
-  <link rel="stylesheet" href="/index.css">
 </head>
 
 <body class="bg-slate-50 text-slate-900 antialiased h-screen w-screen overflow-hidden">
