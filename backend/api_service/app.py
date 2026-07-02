@@ -7,6 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 from dotenv import load_dotenv
+import datetime
+
 
 # Add the parent backend folder to sys.path to allow importing from the common folder
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -21,60 +23,6 @@ load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"))
 
 # Initialize Database
 db.init_db()
-
-# Programmatically initialize GCP/Emulator resources (GCS bucket & PubSub topics)
-def init_gcp_resources():
-    storage_provider = os.getenv("STORAGE_PROVIDER", "GCS").upper()
-    messaging_provider = os.getenv("MESSAGING_PROVIDER", "GCP_PUBSUB").upper()
-
-    if storage_provider == "GCS":
-        bucket_name = os.getenv("GCP_GCS_BUCKET")
-        if bucket_name:
-            try:
-                from google.cloud import storage
-                client = storage.Client()
-                bucket = client.bucket(bucket_name)
-                # Check and create the GCS bucket (works on GCS emulator and cloud)
-                if not bucket.exists():
-                    client.create_bucket(bucket)
-                    print(f"Successfully auto-initialized GCS Bucket: {bucket_name}")
-            except Exception as e:
-                print(f"Failed to auto-initialize GCS Bucket: {e}")
-
-    if messaging_provider == "GCP_PUBSUB":
-        project_id = os.getenv("GCP_PROJECT_ID")
-        topic_id = os.getenv("GCP_PUBSUB_TOPIC_ID")
-        subscription_id = os.getenv("GCP_PUBSUB_SUBSCRIPTION_ID")
-        
-        if project_id and topic_id:
-            try:
-                from google.cloud import pubsub_v1
-                from google.api_core.exceptions import AlreadyExists
-                
-                # Setup Topic (works on Pub/Sub emulator and cloud)
-                publisher = pubsub_v1.PublisherClient()
-                topic_path = publisher.topic_path(project_id, topic_id)
-                try:
-                    publisher.create_topic(request={"name": topic_path})
-                    print(f"Successfully auto-created GCP Pub/Sub Topic: {topic_id}")
-                except AlreadyExists:
-                    pass
-                    
-                # Setup Subscription (works on Pub/Sub emulator and cloud)
-                if subscription_id:
-                    subscriber = pubsub_v1.SubscriberClient()
-                    subscription_path = subscriber.subscription_path(project_id, subscription_id)
-                    try:
-                        subscriber.create_subscription(
-                            request={"name": subscription_path, "topic": topic_path}
-                        )
-                        print(f"Successfully auto-created GCP Pub/Sub Subscription: {subscription_id}")
-                    except AlreadyExists:
-                        pass
-            except Exception as e:
-                print(f"Failed to auto-initialize GCP Pub/Sub resources: {e}")
-
-init_gcp_resources()
 
 app = FastAPI(title="Slip Vault API (Uploader/API Service)", version="1.0.0")
 
@@ -129,16 +77,29 @@ async def process_invoice(req: ProcessInvoiceRequest):
         # 1. Get or generate unique invoice identifier
         invoice_id = req.id or str(uuid.uuid4())
         
-        # 2. Upload image to active storage provider (e.g. GCS or Base64 URI)
-        storage_url = get_storage_provider().upload_image(req.image, invoice_id)
+        # 2. Extract user ID and generate timestamp slug
+        user_id = req.userId or "default_user"
+        now = datetime.datetime.now()
+        timestamp_str = now.strftime("%d-%m-%Y-%H%M%S")
+
+        # Upload image to active storage provider (structured under GCS path)
+        storage_url = get_storage_provider().upload_image(
+            base64_image=req.image,
+            file_name=invoice_id,
+            user_id=user_id,
+            timestamp_str=timestamp_str,
+            store_name="pending"
+        )
         
         # 3. Create placeholder record with status 'PROCESSING'
         db.create_pending_invoice(invoice_id, storage_url)
         
-        # 4. Dispatch processing task to active messaging provider (e.g. GCP Pub/Sub or Dummy)
+        # 4. Dispatch processing task with multi-tenant meta parameters
         task_payload = {
             "id": invoice_id,
-            "gcs_url": storage_url
+            "gcs_url": storage_url,
+            "userId": user_id,
+            "timestamp_str": timestamp_str
         }
         get_messaging_provider().publish_message(task_payload)
         

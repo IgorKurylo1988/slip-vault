@@ -1,0 +1,65 @@
+name: Terraform Deploy to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'infra/deploy/**'
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: ${{ secrets.GCP_REGION || 'europe-central2' }}
+  REGISTRY: ${{ secrets.GCP_REGION || 'europe-central2' }}-docker.pkg.dev
+  REPOSITORY: slip-vault-repo
+
+jobs:
+  deploy:
+    name: Terraform Deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # =====================================================================
+      # 1. Authenticate with Google Cloud
+      # =====================================================================
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      # =====================================================================
+      # 2. Terraform Apply
+      # =====================================================================
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.0
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: infra/deploy
+
+      - name: Terraform Apply
+        run: |
+          terraform apply -auto-approve \
+            -var="project_id=${{ env.PROJECT_ID }}" \
+            -var="region=${{ env.REGION }}" \
+            -var="gcs_bucket_name=${{ secrets.GCP_GCS_BUCKET }}" \
+            -var="pubsub_topic_name=slip-vault-tasks-topic" \
+            -var="api_sa_email=slip-vault-api-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com" \
+            -var="processor_sa_email=slip-vault-processor-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com" \
+            -var="notification_sa_email=slip-vault-notification-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com" \
+            -var="api_image=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/slip-vault-api:latest" \
+            -var="processor_image=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/slip-vault-processor-agent:latest" \
+            -var="notification_image=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/slip-vault-notification:latest"
+        working-directory: infra/deploy

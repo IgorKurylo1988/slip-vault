@@ -1,0 +1,110 @@
+name: Dockerize Microservices
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+  pull_request:
+    paths:
+      - 'backend/**'
+  workflow_dispatch:
+    inputs:
+      build_api:
+        description: 'Manually build and push API Service'
+        type: boolean
+        default: false
+      build_notification:
+        description: 'Manually build and push Notification Service'
+        type: boolean
+        default: false
+      build_processor:
+        description: 'Manually build and push Processor Agent'
+        type: boolean
+        default: false
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION:  'europe-central2' 
+  REGISTRY: 'europe-central2-docker.pkg.dev'
+  REPOSITORY: slip-vault-repo
+
+jobs:
+  check-changes-and-build:
+    name: Build & Push Images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # =====================================================================
+      # 1. Detect Monorepo Path Changes (Auto Mode)
+      # =====================================================================
+      - name: Detect Changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            api:
+              - 'backend/api_service/**'
+              - 'backend/common/**'
+              - 'backend/requirements.txt'
+            notification:
+              - 'backend/notification_service/**'
+              - 'backend/common/**'
+              - 'backend/requirements.txt'
+            processor:
+              - 'backend/processor_agent_invoice/**'
+              - 'backend/common/**'
+              - 'backend/requirements.txt'
+
+      # =====================================================================
+      # 2. Authenticate to GCP and Docker Registry
+      # =====================================================================
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Docker Auth Log-in
+        run: |
+          gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
+
+      # =====================================================================
+      # 3. Conditional Image Builds & Push
+      # =====================================================================
+
+      # A. API Service
+      - name: Build & Push API Service
+        if: ${{ github.event.inputs.build_api == 'true' || steps.filter.outputs.api == 'true' }}
+        run: |
+          IMAGE_PATH="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/slip-vault-api"
+          docker build -t $IMAGE_PATH:${{ github.sha }} -t $IMAGE_PATH:latest -f backend/api_service/Dockerfile ./backend
+          docker push $IMAGE_PATH:${{ github.sha }}
+          docker push $IMAGE_PATH:latest
+
+      # B. Notification Service
+      - name: Build & Push Notification Service
+        if: ${{ github.event.inputs.build_notification == 'true' || steps.filter.outputs.notification == 'true' }}
+        run: |
+          IMAGE_PATH="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/slip-vault-notification"
+          docker build -t $IMAGE_PATH:${{ github.sha }} -t $IMAGE_PATH:latest -f backend/notification_service/Dockerfile ./backend
+          docker push $IMAGE_PATH:${{ github.sha }}
+          docker push $IMAGE_PATH:latest
+
+      # C. Processor Agent
+      - name: Build & Push Processor Agent
+        if: ${{ github.event.inputs.build_processor == 'true' || steps.filter.outputs.processor == 'true' }}
+        run: |
+          IMAGE_PATH="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/slip-vault-processor-agent"
+          docker build -t $IMAGE_PATH:${{ github.sha }} -t $IMAGE_PATH:latest -f backend/processor_agent_invoice/Dockerfile ./backend
+          docker push $IMAGE_PATH:${{ github.sha }}
+          docker push $IMAGE_PATH:latest

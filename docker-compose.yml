@@ -54,12 +54,12 @@ services:
     volumes:
       - ./backend:/app
 
-  processor_service:
+  processor_agent_invoice:
     build:
       context: ./backend
-      dockerfile: processor_service/Dockerfile
-    container_name: slip_vault_worker
-    command: python processor_service/worker.py
+      dockerfile: processor_agent_invoice/Dockerfile
+    container_name: slip_vault_agent_invoice
+    command: python processor_agent_invoice/worker.py
     depends_on:
       - gcs-emulator
       - pubsub-emulator

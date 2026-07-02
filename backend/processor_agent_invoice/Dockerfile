@@ -11,9 +11,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy common modules and the processor_service files
+# Copy common modules and the processor_agent_invoice files
 COPY common ./common
-COPY processor_service ./processor_service
+COPY processor_agent_invoice ./processor_agent_invoice
 
 # Start the worker daemon
-CMD ["python", "processor_service/worker.py"]
+CMD ["python", "processor_agent_invoice/worker.py"]

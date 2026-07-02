@@ -26,6 +26,15 @@ const App: React.FC = () => {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
+  // User ID for multi-tenant path structure
+  const [userId] = useState<string>(() => {
+    const saved = localStorage.getItem('userId');
+    if (saved) return saved;
+    const newId = `user_${Math.random().toString(36).substring(2, 10)}`;
+    localStorage.setItem('userId', newId);
+    return newId;
+  });
+
   useEffect(() => {
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
@@ -65,7 +74,7 @@ const App: React.FC = () => {
   const handleCapture = async (base64Image: string) => {
     setState(AppState.PROCESSING);
     try {
-      const pendingData = await processInvoiceImage(base64Image);
+      const pendingData = await processInvoiceImage(base64Image, userId);
       const invoiceId = pendingData.id;
       
       // Connect to WebSocket notification channel for this invoice ID

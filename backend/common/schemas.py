@@ -4,6 +4,7 @@ from typing import List, Optional
 class ProcessInvoiceRequest(BaseModel):
     image: str  # Base64 string of the processed grayscale image
     id: Optional[str] = None  # Client-supplied unique invoice identifier for notifications
+    userId: Optional[str] = None  # Multi-tenant user identifier
 
 class InvoiceItem(BaseModel):
     sku: Optional[str] = Field(default=None, description="The SKU or catalog/MKT number of the item.")
