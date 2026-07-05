@@ -1,0 +1,100 @@
+name: GCP Infrastructure Pipeline
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'infra/gcp/**'
+  pull_request:
+    paths:
+      - 'infra/gcp/**'
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: ${{ secrets.GCP_REGION || 'europe-central2' }}
+
+jobs:
+  validate:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.0
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Terraform Format Check
+        run: terraform fmt -check
+        working-directory: infra/gcp
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: infra/gcp
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: infra/gcp
+
+      - name: Terraform Plan
+        run: |
+          terraform plan -lock-timeout=5m -out=tfplan \
+            -var="project_id=${{ env.PROJECT_ID }}" \
+            -var="region=${{ env.REGION }}" 
+        working-directory: infra/gcp
+
+      - name: Upload Plan Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-gcp
+          path: infra/gcp/tfplan
+
+  deploy:
+    name: Terraform Apply
+    needs: validate
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.0
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Download Plan Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-gcp
+          path: infra/gcp
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: infra/gcp
+
+      - name: Terraform Apply
+        run: terraform apply -lock-timeout=5m -input=false tfplan
+        working-directory: infra/gcp
