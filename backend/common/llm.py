@@ -65,10 +65,13 @@ def lookup_merchant_details(store_name: str, extracted_address: Optional[str] = 
         # Step 1: Research merchant on Google Search using built-in grounding retriever
         research_prompt = f"Search Google to resolve the exact corporate name and standard registry address of the merchant: '{store_name}'."
         
+        # Adjust search tool format depending on whether model uses Vertex AI or Google AI Studio
+        search_tool = {"googleSearch": {}} if model_name.startswith("vertex_ai") else {"google_search_retriever": {}}
+
         response = litellm.completion(
             model=model_name,
             messages=[{"role": "user", "content": research_prompt}],
-            tools=[{"google_search_retriever": {}}]
+            tools=[search_tool]
         )
         
         search_context = response.choices[0].message.content or ""
