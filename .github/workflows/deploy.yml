@@ -54,7 +54,6 @@ jobs:
           terraform apply -auto-approve \
             -var="project_id=${{ env.PROJECT_ID }}" \
             -var="region=${{ env.REGION }}" \
-            -var="gcs_bucket_name=${{ secrets.GCP_GCS_BUCKET }}" \
             -var="pubsub_topic_name=slip-vault-tasks-topic" \
             -var="api_sa_email=slip-vault-api-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com" \
             -var="processor_sa_email=slip-vault-processor-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com" \

@@ -12,6 +12,7 @@ variable "region" {
 variable "gcs_bucket_name" {
   description = "The unique GCS bucket name for storing digitized receipts"
   type        = string
+  default     = "slip-vault-receipts"
 }
 
 variable "llm_model" {

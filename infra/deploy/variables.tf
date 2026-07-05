@@ -12,6 +12,7 @@ variable "region" {
 variable "gcs_bucket_name" {
   description = "The name of the GCS bucket for receipts (output from core infra)"
   type        = string
+  default     = "slip-vault-bucket"
 }
 
 variable "pubsub_topic_name" {
