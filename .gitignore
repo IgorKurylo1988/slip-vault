@@ -21,3 +21,5 @@ backend/invoices.db-journal
 .env
 .env*.local
 *.env
+infra/gcp_enable.sh
+infra/README.md
