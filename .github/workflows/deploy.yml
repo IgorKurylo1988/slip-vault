@@ -6,6 +6,10 @@ on:
       - main
     paths:
       - 'infra/deploy/**'
+  workflow_run:
+    workflows: ["Dockerize Microservices"]
+    types:
+      - completed
   workflow_dispatch:
 
 env:
@@ -13,10 +17,12 @@ env:
   REGION: ${{ secrets.GCP_REGION || 'europe-central2' }}
   REGISTRY: ${{ secrets.GCP_REGION || 'europe-central2' }}-docker.pkg.dev
   REPOSITORY: slip-vault-repo
+  IMAGE_TAG: ${{ github.event.workflow_run.head_sha || github.sha }}
 
 jobs:
   deploy:
     name: Terraform Deploy
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -58,7 +64,7 @@ jobs:
             -var="api_sa_email=slip-vault-api-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com" \
             -var="processor_sa_email=slip-vault-processor-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com" \
             -var="notification_sa_email=slip-vault-notification-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com" \
-            -var="api_image=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/slip-vault-api:latest" \
-            -var="processor_image=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/slip-vault-processor-agent:latest" \
-            -var="notification_image=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/slip-vault-notification:latest"
+            -var="api_image=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/slip-vault-api:${{ env.IMAGE_TAG }}" \
+            -var="processor_image=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/slip-vault-processor-agent:${{ env.IMAGE_TAG }}" \
+            -var="notification_image=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/slip-vault-notification:${{ env.IMAGE_TAG }}"
         working-directory: infra/deploy

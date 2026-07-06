@@ -1,13 +1,9 @@
 # =====================================================================
 # Firestore Database (Native Serverless Mode)
 # =====================================================================
-import {
-  to = google_firestore_database.database
-  id = "projects/lithe-saga-103615/databases/(default)"
-}
 
 resource "google_firestore_database" "database" {
-  name        = "(default)"
+  name        = "slip-vault"
   location_id = var.region
   type        = "FIRESTORE_NATIVE"
 
