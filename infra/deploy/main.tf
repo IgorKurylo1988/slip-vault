@@ -121,6 +121,11 @@ resource "google_cloud_run_v2_service" "processor_agent" {
 # =====================================================================
 # 2. Pub/Sub Push Subscription to Trigger Agent Webhook
 # =====================================================================
+import {
+  to = google_service_account.pubsub_invoker_sa
+  id = "projects/lithe-saga-103615/serviceAccounts/slip-vault-pubsub-invoker-sa@lithe-saga-103615.iam.gserviceaccount.com"
+}
+
 resource "google_service_account" "pubsub_invoker_sa" {
   account_id   = "slip-vault-pubsub-invoker-sa"
   display_name = "Pub/Sub Invoker Service Account for Push Subscription"
