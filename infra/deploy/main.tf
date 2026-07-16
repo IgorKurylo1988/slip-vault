@@ -83,10 +83,6 @@ resource "google_cloud_run_v2_service" "processor_agent" {
         container_port = 8080
       }
       env {
-        name  = "PORT"
-        value = "8080"
-      }
-      env {
         name  = "STORAGE_PROVIDER"
         value = "GCS"
       }
