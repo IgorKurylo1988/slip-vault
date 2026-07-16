@@ -16,4 +16,4 @@ COPY common ./common
 COPY processor_agent_invoice ./processor_agent_invoice
 
 # Start the worker daemon
-CMD ["python", "processor_agent_invoice/worker.py"]
+CMD ["python", "processor_agent_invoice/agent.py"]

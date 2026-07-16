@@ -167,6 +167,6 @@ if __name__ == "__main__":
     if port:
         import uvicorn
         logger.info(f"Starting worker as HTTP Server on port {port}...")
-        uvicorn.run("worker:app", host="0.0.0.0", port=int(port))
+        uvicorn.run("processor_agent_invoice.agent:app", host="0.0.0.0", port=int(port))
     else:
         poll_queue()

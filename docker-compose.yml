@@ -59,7 +59,7 @@ services:
       context: ./backend
       dockerfile: processor_agent_invoice/Dockerfile
     container_name: slip_vault_agent_invoice
-    command: python processor_agent_invoice/worker.py
+    command: python processor_agent_invoice/agent.py
     depends_on:
       - gcs-emulator
       - pubsub-emulator
