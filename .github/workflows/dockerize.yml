@@ -37,10 +37,16 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    outputs:
+      image_tag: ${{ steps.vars.outputs.sha_short }}
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Set Short SHA
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
       # =====================================================================
       # 1. Detect Monorepo Path Changes (Auto Mode)
@@ -87,8 +93,8 @@ jobs:
         if: ${{ github.event.inputs.build_api == 'true' || steps.filter.outputs.api == 'true' }}
         run: |
           IMAGE_PATH="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/slip-vault-api"
-          docker build -t $IMAGE_PATH:${{ github.sha }} -t $IMAGE_PATH:latest -f backend/api_service/Dockerfile ./backend
-          docker push $IMAGE_PATH:${{ github.sha }}
+          docker build -t $IMAGE_PATH:${{ steps.vars.outputs.sha_short }} -t $IMAGE_PATH:latest -f backend/api_service/Dockerfile ./backend
+          docker push $IMAGE_PATH:${{ steps.vars.outputs.sha_short }}
           docker push $IMAGE_PATH:latest
 
       # B. Notification Service
@@ -96,8 +102,8 @@ jobs:
         if: ${{ github.event.inputs.build_notification == 'true' || steps.filter.outputs.notification == 'true' }}
         run: |
           IMAGE_PATH="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/slip-vault-notification"
-          docker build -t $IMAGE_PATH:${{ github.sha }} -t $IMAGE_PATH:latest -f backend/notification_service/Dockerfile ./backend
-          docker push $IMAGE_PATH:${{ github.sha }}
+          docker build -t $IMAGE_PATH:${{ steps.vars.outputs.sha_short }} -t $IMAGE_PATH:latest -f backend/notification_service/Dockerfile ./backend
+          docker push $IMAGE_PATH:${{ steps.vars.outputs.sha_short }}
           docker push $IMAGE_PATH:latest
 
       # C. Processor Agent
@@ -105,6 +111,6 @@ jobs:
         if: ${{ github.event.inputs.build_processor == 'true' || steps.filter.outputs.processor == 'true' }}
         run: |
           IMAGE_PATH="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/slip-vault-processor-agent"
-          docker build -t $IMAGE_PATH:${{ github.sha }} -t $IMAGE_PATH:latest -f backend/processor_agent_invoice/Dockerfile ./backend
-          docker push $IMAGE_PATH:${{ github.sha }}
+          docker build -t $IMAGE_PATH:${{ steps.vars.outputs.sha_short }} -t $IMAGE_PATH:latest -f backend/processor_agent_invoice/Dockerfile ./backend
+          docker push $IMAGE_PATH:${{ steps.vars.outputs.sha_short }}
           docker push $IMAGE_PATH:latest

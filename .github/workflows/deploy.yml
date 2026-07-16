@@ -11,13 +11,17 @@ on:
     types:
       - completed
   workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Specific docker image tag (short commit SHA) to deploy'
+        required: false
+        type: string
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   REGION: ${{ secrets.GCP_REGION || 'europe-central2' }}
   REGISTRY: ${{ secrets.GCP_REGION || 'europe-central2' }}-docker.pkg.dev
   REPOSITORY: slip-vault-repo
-  IMAGE_TAG: ${{ github.event.workflow_run.head_sha || github.sha }}
 
 jobs:
   deploy:
@@ -31,6 +35,17 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Set Image Tag
+        run: |
+          if [ -n "${{ github.event.inputs.image_tag }}" ]; then
+            TAG="${{ github.event.inputs.image_tag }}"
+          elif [ -n "${{ github.event.workflow_run.head_sha }}" ]; then
+            TAG=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
+          else
+            TAG=$(echo "${{ github.sha }}" | cut -c1-7)
+          fi
+          echo "IMAGE_TAG=${TAG}" >> $GITHUB_ENV
 
       # =====================================================================
       # 1. Authenticate with Google Cloud
