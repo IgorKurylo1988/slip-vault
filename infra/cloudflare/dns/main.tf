@@ -51,12 +51,32 @@ resource "cloudflare_ruleset" "redirect_www_to_root" {
   ]
 }
 
-# Phase 2: Placeholder for API Service DNS Record (to be customized and uncommented later)
-# resource "cloudflare_dns_record" "api_service" {
-#   zone_id = var.cloudflare_zone_id
-#   name    = "api"
-#   content   = "<your-gcp-api-load-balancer-ip-or-dns>"
-#   type    = "CNAME" # change to "A" if using direct external static IP
-#   proxied = true
-#   ttl     = 1
-# }
+# Data source to fetch the remote state from GCP application deployments
+data "terraform_remote_state" "gcp_application" {
+  backend = "gcs"
+  config = {
+    bucket = "slip-vault-tf-cm-data"
+    prefix = "gcp/application"
+  }
+}
+
+# DNS CNAME for API Service pointing to Cloud Run URL
+resource "cloudflare_dns_record" "api_service" {
+  zone_id = var.cloudflare_zone_id
+  name    = "api"
+  content = replace(replace(data.terraform_remote_state.gcp_application.outputs.api_service_url, "https://", ""), "/", "")
+  type    = "CNAME"
+  proxied = true
+  ttl     = 1
+}
+
+# DNS CNAME for Notification Service pointing to Cloud Run URL (supports WebSocket)
+resource "cloudflare_dns_record" "notification_service" {
+  zone_id = var.cloudflare_zone_id
+  name    = "notifications"
+  content = replace(replace(data.terraform_remote_state.gcp_application.outputs.notification_service_url, "https://", ""), "/", "")
+  type    = "CNAME"
+  proxied = true
+  ttl     = 1
+}
+

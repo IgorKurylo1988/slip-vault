@@ -2,7 +2,7 @@ import { InvoiceData } from "../types";
 
 const getApiUrl = (path: string) => {
   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  const base = isLocal ? 'http://localhost:8000' : window.location.origin;
+  const base = isLocal ? 'http://localhost:8000' : 'https://api.slip-vault.com';
   return `${base}${path}`;
 };
 

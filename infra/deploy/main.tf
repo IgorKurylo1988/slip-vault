@@ -170,3 +170,7 @@ output "notification_service_url" {
   description = "The public endpoint URL of the Notification Service"
   value       = google_cloud_run_v2_service.notification_service.uri
 }
+output "processor_agent_service_url" {
+  description = "The public endpoint URL of the Processor Agent Service"
+  value       = google_cloud_run_v2_service.processor_agent.uri
+}
