@@ -8,7 +8,6 @@ resource "google_cloud_run_v2_service" "api_service" {
   name     = "slip-vault-api"
   location = var.region
   ingress  = "INGRESS_TRAFFIC_ALL"
-
   template {
     service_account = var.api_sa_email
     containers {
@@ -42,6 +41,12 @@ resource "google_cloud_run_v2_service" "api_service" {
       }
     }
   }
+}
+resource "google_cloud_run_v2_service_iam_member" "api_service_public_access" {
+  name     = google_cloud_run_v2_service.api_service.name
+  location = google_cloud_run_v2_service.api_service.location
+  role     = "roles/run.invoker"
+  member   = "allUsers"
 }
 
 # B. Notification Service
