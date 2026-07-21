@@ -1,3 +1,18 @@
+import {
+  to = module.api_service.google_cloud_run_v2_service.service
+  id = "projects/lithe-saga-103615/locations/europe-central2/services/slip-vault-api"
+}
+
+import {
+  to = module.api_service.google_cloud_run_v2_service_iam_member.public_access[0]
+  id = "projects/lithe-saga-103615/locations/europe-central2/services/slip-vault-api roles/run.invoker allUsers"
+}
+
+import {
+  to = module.api_service.google_cloud_run_domain_mapping.domain_mapping[0]
+  id = "locations/europe-central2/namespaces/lithe-saga-103615/domainmappings/api.slip-vault.com"
+}
+
 module "api_service" {
   source                = "../../modules/cloud_run_service"
   service_name          = "slip-vault-api"
