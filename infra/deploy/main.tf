@@ -49,6 +49,19 @@ resource "google_cloud_run_v2_service_iam_member" "api_service_public_access" {
   member   = "allUsers"
 }
 
+resource "google_cloud_run_domain_mapping" "api_service_domain_mapping" {
+  location = var.region
+  name     = "api.slip-vault.com"
+
+  metadata {
+    namespace = var.project_id
+  }
+
+  spec {
+    route_name = google_cloud_run_v2_service.api_service.name
+  }
+}
+
 # B. Notification Service
 resource "google_cloud_run_v2_service" "notification_service" {
   name     = "slip-vault-notification"
@@ -71,6 +84,19 @@ resource "google_cloud_run_v2_service" "notification_service" {
         value = var.project_id
       }
     }
+  }
+}
+
+resource "google_cloud_run_domain_mapping" "notification_service_domain_mapping" {
+  location = var.region
+  name     = "notifications.slip-vault.com"
+
+  metadata {
+    namespace = var.project_id
+  }
+
+  spec {
+    route_name = google_cloud_run_v2_service.notification_service.name
   }
 }
 
