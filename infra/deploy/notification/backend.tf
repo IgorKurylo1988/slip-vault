@@ -1,6 +1,6 @@
 terraform {
   backend "gcs" {
     bucket = "slip-vault-tf-cm-data"
-    prefix = "gcp/application"
+    prefix = "gcp/application/notification"
   }
 }
