@@ -8,6 +8,7 @@ import {
   id = "locations/europe-central2/namespaces/lithe-saga-103615/domainmappings/notifications.slip-vault.com"
 }
 
+
 module "notification_service" {
   source                = "../../modules/cloud_run_service"
   service_name          = "slip-vault-notification"
