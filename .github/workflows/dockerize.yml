@@ -77,13 +77,13 @@ jobs:
       - name: Ensure Artifact Registry Exists
         if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.service == matrix.service.name || github.event.inputs.service == 'all')) || steps.filter.outputs.changed == 'true' }}
         run: |
-          gcloud artifacts repositories describe ${{ env.REPOSITORY }} --location=${{ env.REGION }} --project=${{ env.PROJECT_ID }} || \
+          gcloud artifacts repositories describe ${{ env.REPOSITORY }} --location=${{ env.REGION }} --project=${{ env.PROJECT_ID }} >/dev/null 2>&1 || \
           gcloud artifacts repositories create ${{ env.REPOSITORY }} \
             --repository-format=docker \
             --location=${{ env.REGION }} \
             --project=${{ env.PROJECT_ID }} \
             --description="Docker Repository for Slip Vault microservices" \
-            --quiet
+            --quiet || true
 
       - name: Docker Auth Log-in
         if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.service == matrix.service.name || github.event.inputs.service == 'all')) || steps.filter.outputs.changed == 'true' }}
