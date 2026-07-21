@@ -23,7 +23,4 @@ output "notification_service_account_email" {
   value       = google_service_account.notification_sa.email
 }
 
-output "registry_repository_id" {
-  description = "The ID of the Artifact Registry repository"
-  value       = google_artifact_registry_repository.repo.repository_id
-}
+
