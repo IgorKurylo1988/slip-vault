@@ -23,7 +23,7 @@ resource "cloudflare_dns_record" "web_static" {
   ttl     = 1
 }
 
-# Redirect www to root domain using modern Redirect Rules (supports account-owned tokens)
+# Redirect www to root domain using modern Redirect Rules
 resource "cloudflare_ruleset" "redirect_www_to_root" {
   zone_id     = var.cloudflare_zone_id
   name        = "Redirect WWW to Root"
@@ -51,12 +51,20 @@ resource "cloudflare_ruleset" "redirect_www_to_root" {
   ]
 }
 
-# Data source to fetch the remote state from GCP application deployments
-data "terraform_remote_state" "gcp_application" {
+# Remote states for GCP application microservices
+data "terraform_remote_state" "gcp_api" {
   backend = "gcs"
   config = {
     bucket = "slip-vault-tf-cm-data"
-    prefix = "gcp/application"
+    prefix = "gcp/application/api"
+  }
+}
+
+data "terraform_remote_state" "gcp_notification" {
+  backend = "gcs"
+  config = {
+    bucket = "slip-vault-tf-cm-data"
+    prefix = "gcp/application/notification"
   }
 }
 
@@ -64,19 +72,58 @@ data "terraform_remote_state" "gcp_application" {
 resource "cloudflare_dns_record" "api_service" {
   zone_id = var.cloudflare_zone_id
   name    = "api"
-  content = replace(replace(data.terraform_remote_state.gcp_application.outputs.api_service_url, "https://", ""), "/", "")
+  content = replace(replace(data.terraform_remote_state.gcp_api.outputs.api_service_url, "https://", ""), "/", "")
   type    = "CNAME"
   proxied = true
   ttl     = 1
 }
 
-# DNS CNAME for Notification Service pointing to Cloud Run URL (supports WebSocket)
+# DNS CNAME for Notification Service pointing to Cloud Run URL
 resource "cloudflare_dns_record" "notification_service" {
   zone_id = var.cloudflare_zone_id
   name    = "notifications"
-  content = replace(replace(data.terraform_remote_state.gcp_application.outputs.notification_service_url, "https://", ""), "/", "")
+  content = replace(replace(data.terraform_remote_state.gcp_notification.outputs.notification_service_url, "https://", ""), "/", "")
   type    = "CNAME"
   proxied = true
   ttl     = 1
 }
 
+# Rewrite Host header for Cloud Run services (required for europe-central2)
+resource "cloudflare_ruleset" "rewrite_cloudrun_host_header" {
+  zone_id     = var.cloudflare_zone_id
+  name        = "Rewrite Host Header for Cloud Run"
+  description = "Rewrites Host header to target .run.app URL for Cloud Run in europe-central2"
+  kind        = "zone"
+  phase       = "http_request_late_transform"
+
+  rules = [
+    {
+      action = "rewrite"
+      action_parameters = {
+        headers = {
+          "host" = {
+            operation = "set"
+            value     = replace(replace(data.terraform_remote_state.gcp_api.outputs.api_service_url, "https://", ""), "/", "")
+          }
+        }
+      }
+      expression  = "http.host eq \"api.slip-vault.com\""
+      description = "Rewrite Host header for api.slip-vault.com"
+      enabled     = true
+    },
+    {
+      action = "rewrite"
+      action_parameters = {
+        headers = {
+          "host" = {
+            operation = "set"
+            value     = replace(replace(data.terraform_remote_state.gcp_notification.outputs.notification_service_url, "https://", ""), "/", "")
+          }
+        }
+      }
+      expression  = "http.host eq \"notifications.slip-vault.com\""
+      description = "Rewrite Host header for notifications.slip-vault.com"
+      enabled     = true
+    }
+  ]
+}

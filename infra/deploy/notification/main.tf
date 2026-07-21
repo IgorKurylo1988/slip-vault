@@ -1,10 +1,3 @@
-import {
-  to = module.notification_service.google_cloud_run_v2_service.service
-  id = "projects/lithe-saga-103615/locations/europe-central2/services/slip-vault-notification"
-}
-
-
-
 module "notification_service" {
   source                = "../../modules/cloud_run_service"
   service_name          = "slip-vault-notification"

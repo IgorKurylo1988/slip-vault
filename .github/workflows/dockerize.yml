@@ -18,8 +18,8 @@ on:
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  REGION: 'europe-central2'
-  REGISTRY: 'europe-central2-docker.pkg.dev'
+  REGION: 'europe-north1'
+  REGISTRY: 'europe-north1-docker.pkg.dev'
   REPOSITORY: slip-vault-repo
 
 jobs:

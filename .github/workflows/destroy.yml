@@ -1,10 +1,10 @@
-name: Terraform Deploy to Cloud Run
+name: Terraform Destroy Cloud Run Services
 
 on:
   workflow_dispatch:
     inputs:
       service:
-        description: 'Service to deploy (api, notification, processor, or all)'
+        description: 'Service to destroy (api, notification, processor, or all)'
         required: true
         type: choice
         default: 'all'
@@ -13,18 +13,18 @@ on:
           - api
           - notification
           - processor
-      image_tag:
-        description: 'Commit SHA tag (e.g. 3a93cd4) to deploy'
+      region:
+        description: 'Region of existing resources to destroy'
         required: true
         type: string
+        default: 'europe-central2'
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  REGION: ${{ secrets.GCP_REGION || 'europe-north1' }}
 
 jobs:
-  matrix-deploy:
-    name: Deploy (${{ matrix.service.name }})
+  matrix-destroy:
+    name: Destroy (${{ matrix.service.name }})
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -69,11 +69,11 @@ jobs:
         run: terraform init
         working-directory: infra/deploy/${{ matrix.service.dir }}
 
-      - name: Terraform Apply
+      - name: Terraform Destroy
         if: ${{ github.event.inputs.service == matrix.service.id || github.event.inputs.service == 'all' }}
         run: |
-          terraform apply -auto-approve \
+          terraform destroy -auto-approve \
             -var="project_id=${{ env.PROJECT_ID }}" \
-            -var="region=${{ env.REGION }}" \
-            -var="image_tag=${{ inputs.image_tag }}"
+            -var="region=${{ inputs.region }}" \
+            -var="image_tag=dummy"
         working-directory: infra/deploy/${{ matrix.service.dir }}
