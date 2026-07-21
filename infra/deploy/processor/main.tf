@@ -1,23 +1,3 @@
-import {
-  to = module.processor_agent.google_cloud_run_v2_service.service
-  id = "projects/lithe-saga-103615/locations/europe-central2/services/slip-vault-processor-agent"
-}
-
-import {
-  to = google_service_account.pubsub_invoker_sa
-  id = "projects/lithe-saga-103615/serviceAccounts/slip-vault-pubsub-invoker-sa@lithe-saga-103615.iam.gserviceaccount.com"
-}
-
-import {
-  to = google_cloud_run_v2_service_iam_member.pubsub_run_invoker
-  id = "projects/lithe-saga-103615/locations/europe-central2/services/slip-vault-processor-agent roles/run.invoker serviceAccount:slip-vault-pubsub-invoker-sa@lithe-saga-103615.iam.gserviceaccount.com"
-}
-
-import {
-  to = google_pubsub_subscription.push_subscription
-  id = "projects/lithe-saga-103615/subscriptions/slip-vault-tasks-push-sub"
-}
-
 module "processor_agent" {
   source                = "../../modules/cloud_run_service"
   service_name          = "slip-vault-processor-agent"
