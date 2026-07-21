@@ -3,10 +3,6 @@ import {
   id = "projects/lithe-saga-103615/locations/europe-central2/services/slip-vault-notification"
 }
 
-import {
-  to = module.notification_service.google_cloud_run_domain_mapping.domain_mapping[0]
-  id = "locations/europe-central2/namespaces/lithe-saga-103615/domainmappings/notifications.slip-vault.com"
-}
 
 
 module "notification_service" {

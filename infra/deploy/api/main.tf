@@ -8,11 +8,6 @@ import {
   id = "projects/lithe-saga-103615/locations/europe-central2/services/slip-vault-api roles/run.invoker allUsers"
 }
 
-import {
-  to = module.api_service.google_cloud_run_domain_mapping.domain_mapping[0]
-  id = "locations/europe-central2/namespaces/lithe-saga-103615/domainmappings/api.slip-vault.com"
-}
-
 module "api_service" {
   source                = "../../modules/cloud_run_service"
   service_name          = "slip-vault-api"
