@@ -20,7 +20,7 @@ on:
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  REGION: ${{ secrets.GCP_REGION || 'europe-north1' }}
+  REGION: ${{ secrets.GCP_REGION || 'europe-central2' }}
 
 jobs:
   matrix-deploy:

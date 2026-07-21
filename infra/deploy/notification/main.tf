@@ -1,3 +1,8 @@
+import {
+  to = module.notification_service.google_cloud_run_v2_service.service
+  id = "projects/lithe-saga-103615/locations/europe-central2/services/slip-vault-notification"
+}
+
 module "notification_service" {
   source                = "../../modules/cloud_run_service"
   service_name          = "slip-vault-notification"
@@ -8,7 +13,6 @@ module "notification_service" {
   container_port        = 8001
   ingress               = "INGRESS_TRAFFIC_ALL"
   allow_unauthenticated = false
-  custom_domain         = "notifications.slip-vault.com"
   env_vars = {
     DATABASE_PROVIDER = "FIRESTORE"
     GCP_PROJECT_ID    = var.project_id

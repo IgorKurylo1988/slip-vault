@@ -6,7 +6,7 @@ variable "project_id" {
 variable "region" {
   description = "The GCP region"
   type        = string
-  default     = "europe-north1"
+  default     = "europe-central2"
 }
 
 variable "image_tag" {

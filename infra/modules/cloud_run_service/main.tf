@@ -33,17 +33,3 @@ resource "google_cloud_run_v2_service_iam_member" "public_access" {
   role     = "roles/run.invoker"
   member   = "allUsers"
 }
-
-resource "google_cloud_run_domain_mapping" "domain_mapping" {
-  count    = var.custom_domain != "" ? 1 : 0
-  location = var.location
-  name     = var.custom_domain
-
-  metadata {
-    namespace = var.project_id
-  }
-
-  spec {
-    route_name = google_cloud_run_v2_service.service.name
-  }
-}
