@@ -38,14 +38,8 @@ jobs:
 
       - name: Set Image Tag
         run: |
-          if [ -n "${{ github.event.inputs.image_tag }}" ]; then
-            TAG="${{ github.event.inputs.image_tag }}"
-          elif [ -n "${{ github.event.workflow_run.head_sha }}" ]; then
-            TAG=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
-          else
-            TAG=$(echo "${{ github.sha }}" | cut -c1-7)
-          fi
-          echo "IMAGE_TAG=${TAG}" >> $GITHUB_ENV
+          TAG="${{ github.event.inputs.image_tag || github.event.workflow_run.head_sha || github.sha }}"
+          echo "IMAGE_TAG=${TAG:0:7}" >> $GITHUB_ENV
 
       # =====================================================================
       # 1. Authenticate with Google Cloud
