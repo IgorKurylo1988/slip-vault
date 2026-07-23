@@ -41,7 +41,7 @@ EOT
 resource "cloudflare_workers_route" "api_route" {
   zone_id = var.cloudflare_zone_id
   pattern = "api.slip-vault.com/*"
-  script  = cloudflare_workers_script.api_proxy.name
+  script  = "api-proxy"
 }
 
 resource "cloudflare_workers_script" "notification_proxy" {
@@ -71,5 +71,5 @@ EOT
 resource "cloudflare_workers_route" "notification_route" {
   zone_id = var.cloudflare_zone_id
   pattern = "notifications.slip-vault.com/*"
-  script  = cloudflare_workers_script.notification_proxy.name
+  script  = "notification-proxy"
 }
