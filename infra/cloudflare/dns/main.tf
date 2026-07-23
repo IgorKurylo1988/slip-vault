@@ -88,32 +88,4 @@ resource "cloudflare_dns_record" "notification_service" {
   ttl     = 1
 }
 
-# Override Origin Host header for Cloud Run services
-resource "cloudflare_ruleset" "rewrite_cloudrun_host_header" {
-  zone_id     = var.cloudflare_zone_id
-  name        = "Rewrite Host Header for Cloud Run"
-  description = "Rewrites Host header to target .run.app URL for Cloud Run in europe-central2"
-  kind        = "zone"
-  phase       = "http_request_origin"
 
-  rules = [
-    {
-      action = "route"
-      action_parameters = {
-        host_header = replace(replace(data.terraform_remote_state.gcp_api.outputs.api_service_url, "https://", ""), "/", "")
-      }
-      expression  = "http.host eq \"api.slip-vault.com\""
-      description = "Rewrite Host header for api.slip-vault.com"
-      enabled     = true
-    },
-    {
-      action = "route"
-      action_parameters = {
-        host_header = replace(replace(data.terraform_remote_state.gcp_notification.outputs.notification_service_url, "https://", ""), "/", "")
-      }
-      expression  = "http.host eq \"notifications.slip-vault.com\""
-      description = "Rewrite Host header for notifications.slip-vault.com"
-      enabled     = true
-    }
-  ]
-}

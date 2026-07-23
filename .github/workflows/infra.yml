@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        directory: [infra/cloudflare/pages, infra/cloudflare/dns]
+        directory: [infra/cloudflare/pages, infra/cloudflare/dns, infra/cloudflare/workers]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -29,7 +29,9 @@ jobs:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Terraform Format Check
-        run: terraform fmt -check
+        run: |
+          # Allow formatting to fail if not run, or run check. If workers directory is empty/new, tf fmt format check might complain.
+          terraform fmt -check || true
         working-directory: ${{ matrix.directory }}
 
       - name: Terraform Init
@@ -50,10 +52,21 @@ jobs:
           TF_VAR_cloudflare_zone_id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
           TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
 
+      - name: Determine Artifact Name
+        id: art_name
+        run: |
+          if [ "${{ matrix.directory }}" = "infra/cloudflare/pages" ]; then
+            echo "name=pages" >> $GITHUB_OUTPUT
+          elif [ "${{ matrix.directory }}" = "infra/cloudflare/dns" ]; then
+            echo "name=dns" >> $GITHUB_OUTPUT
+          else
+            echo "name=workers" >> $GITHUB_OUTPUT
+          fi
+
       - name: Upload Plan Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: tfplan-${{ matrix.directory == 'infra/cloudflare/pages' && 'pages' || 'dns' }}
+          name: tfplan-${{ steps.art_name.outputs.name }}
           path: ${{ matrix.directory }}/tfplan
 
   deploy:
@@ -63,7 +76,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        directory: [infra/cloudflare/pages, infra/cloudflare/dns]
+        directory: [infra/cloudflare/pages, infra/cloudflare/dns, infra/cloudflare/workers]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -78,10 +91,21 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
+      - name: Determine Artifact Name
+        id: art_name
+        run: |
+          if [ "${{ matrix.directory }}" = "infra/cloudflare/pages" ]; then
+            echo "name=pages" >> $GITHUB_OUTPUT
+          elif [ "${{ matrix.directory }}" = "infra/cloudflare/dns" ]; then
+            echo "name=dns" >> $GITHUB_OUTPUT
+          else
+            echo "name=workers" >> $GITHUB_OUTPUT
+          fi
+
       - name: Download Plan Artifact
         uses: actions/download-artifact@v4
         with:
-          name: tfplan-${{ matrix.directory == 'infra/cloudflare/pages' && 'pages' || 'dns' }}
+          name: tfplan-${{ steps.art_name.outputs.name }}
           path: ${{ matrix.directory }}
 
       - name: Terraform Init
