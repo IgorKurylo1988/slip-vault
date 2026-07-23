@@ -19,3 +19,7 @@ variable "region" {
   default     = "europe-central2"
   description = "GCP Region for the provider setup."
 }
+variable "cloudflare_account_id" {
+  type        = string
+  description = "The Cloudflare Account ID."
+}

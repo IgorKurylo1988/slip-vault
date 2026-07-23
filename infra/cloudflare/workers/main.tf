@@ -14,9 +14,10 @@ data "terraform_remote_state" "gcp_notification" {
   }
 }
 
-resource "cloudflare_worker_script" "api_proxy" {
-  name = "api-proxy"
-  content = <<EOT
+resource "cloudflare_workers_script" "api_proxy" {
+  account_id  = var.cloudflare_account_id
+  script_name = "api-proxy"
+  content     = <<EOT
 addEventListener("fetch", event => {
   event.respondWith(handleRequest(event.request))
 })
@@ -37,15 +38,16 @@ async function handleRequest(request) {
 EOT
 }
 
-resource "cloudflare_worker_route" "api_route" {
-  zone_id     = var.cloudflare_zone_id
-  pattern     = "api.slip-vault.com/*"
-  script_name = cloudflare_worker_script.api_proxy.name
+resource "cloudflare_workers_route" "api_route" {
+  zone_id = var.cloudflare_zone_id
+  pattern = "api.slip-vault.com/*"
+  script  = cloudflare_workers_script.api_proxy.name
 }
 
-resource "cloudflare_worker_script" "notification_proxy" {
-  name = "notification-proxy"
-  content = <<EOT
+resource "cloudflare_workers_script" "notification_proxy" {
+  account_id  = var.cloudflare_account_id
+  script_name = "notification-proxy"
+  content     = <<EOT
 addEventListener("fetch", event => {
   event.respondWith(handleRequest(event.request))
 })
@@ -66,8 +68,8 @@ async function handleRequest(request) {
 EOT
 }
 
-resource "cloudflare_worker_route" "notification_route" {
-  zone_id     = var.cloudflare_zone_id
-  pattern     = "notifications.slip-vault.com/*"
-  script_name = cloudflare_worker_script.notification_proxy.name
+resource "cloudflare_workers_route" "notification_route" {
+  zone_id = var.cloudflare_zone_id
+  pattern = "notifications.slip-vault.com/*"
+  script  = cloudflare_workers_script.notification_proxy.name
 }
