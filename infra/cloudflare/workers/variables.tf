@@ -1,7 +1,7 @@
-variable "cloudflare_account_api_token" {
+variable "cloudflare_zone_api_token" {
   type        = string
   sensitive   = true
-  description = "The Cloudflare API Token with Account-level (Workers) permissions."
+  description = "The Cloudflare API Token with Account-level and Zone-level permissions."
 }
 
 variable "cloudflare_zone_id" {
