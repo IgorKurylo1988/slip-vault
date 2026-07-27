@@ -11,9 +11,19 @@ from common.notification import notification_service
 
 app = FastAPI(title="Slip Vault Notification Service", version="1.0.0")
 
+origins = [
+    "https://slip-vault.com",
+    "https://www.slip-vault.com",
+    "https://api.slip-vault.com",
+    "https://notifications.slip-vault.com",
+    "http://localhost:3000",
+    "http://localhost:8000",
+    "http://localhost:8001",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

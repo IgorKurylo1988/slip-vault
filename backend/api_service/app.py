@@ -25,7 +25,15 @@ load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"))
 db.init_db()
 
 app = FastAPI(title="Slip Vault API (Uploader/API Service)", version="1.0.0")
-origins = ["https://slip-vault.com"] if os.getenv("PROD") else ["http://localhost:3000"]
+origins = [
+    "https://slip-vault.com",
+    "https://www.slip-vault.com",
+    "https://api.slip-vault.com",
+    "https://notifications.slip-vault.com",
+    "http://localhost:3000",
+    "http://localhost:8000",
+    "http://localhost:8001",
+]
 # Enable CORS for frontend integration
 app.add_middleware(
     CORSMiddleware,
