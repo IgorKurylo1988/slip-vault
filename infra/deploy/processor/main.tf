@@ -1,3 +1,11 @@
+data "terraform_remote_state" "gcp_notification" {
+  backend = "gcs"
+  config = {
+    bucket = "slip-vault-tf-cm-data"
+    prefix = "gcp/application/notification"
+  }
+}
+
 module "processor_agent" {
   source                = "../../modules/cloud_run_service"
   service_name          = "slip-vault-processor-agent"
@@ -16,7 +24,7 @@ module "processor_agent" {
     MESSAGING_PROVIDER        = "GCP_PUBSUB"
     GCP_PUBSUB_TOPIC_ID       = var.pubsub_topic_name
     LLM_MODEL                 = var.llm_model
-    NOTIFICATION_CALLBACK_URL = var.notification_service_url
+    NOTIFICATION_CALLBACK_URL = data.terraform_remote_state.gcp_notification.outputs.notification_service_url
   }
 }
 

@@ -21,7 +21,10 @@ logger = logging.getLogger("worker")
 # Load local environment variables
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"))
 
-NOTIFICATION_CALLBACK_URL = os.getenv("NOTIFICATION_CALLBACK_URL", "http://notification_service:8001")
+notification_url = os.getenv("NOTIFICATION_CALLBACK_URL")
+if not notification_url or not notification_url.strip():
+    notification_url = "http://notification_service:8001"
+NOTIFICATION_CALLBACK_URL = notification_url
 
 # Initialize FastAPI App to handle Pub/Sub Push Subscriptions on Cloud Run
 app = FastAPI(title="Slip Vault Processor Agent Task Handler")
