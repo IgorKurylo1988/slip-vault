@@ -11,7 +11,8 @@ def get_firestore_client():
     if _firestore_client is None:
         from google.cloud import firestore
         # Resolves credentials from default GCP environment or emulator
-        _firestore_client = firestore.Client()
+        db_name = os.getenv("FIRESTORE_DATABASE", "slip-vault")
+        _firestore_client = firestore.Client(database=db_name)
     return _firestore_client
 
 # =====================================================================
