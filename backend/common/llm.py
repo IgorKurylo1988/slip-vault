@@ -26,7 +26,7 @@ VERIFICATION RULES:
 - The document MUST be a refundable/credit document.
 
 EXTRACT THESE FIELDS:
-- storeName: The shop or merchant name.
+- storeName: The shop or merchant name (normally printed as the prominent, large, bold title at the very top of the receipt).
 - storeAddress: Full address if visible.
 - date: YYYY-MM-DD.
 - time: HH:MM.

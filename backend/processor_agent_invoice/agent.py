@@ -51,6 +51,13 @@ def send_callback(invoice_id: str, status: str, data: dict):
 def run_agentic_task(invoice_id: str, gcs_url: str, user_id: str, timestamp_str: str):
     logger.info(f"Processing invoice task {invoice_id} for user {user_id} from URL: {gcs_url}")
     try:
+        # Check if already processed/completed in DB
+        existing = db.get_invoice_by_id(invoice_id)
+        if existing and existing.get("status") == "COMPLETED":
+            logger.info(f"Invoice {invoice_id} is already processed and COMPLETED. Sending callback directly.")
+            send_callback(invoice_id, "COMPLETED", existing)
+            return
+
         # 1. Call LiteLLM interface to process the image
         metadata = llm.process_invoice_image(gcs_url)
         
@@ -66,10 +73,11 @@ def run_agentic_task(invoice_id: str, gcs_url: str, user_id: str, timestamp_str:
             db.update_invoice_error(invoice_id, rejection)
             send_callback(invoice_id, "ERROR", {"error": rejection})
         else:
-            # Clean/slugify storeName for file path
+            # Clean/slugify storeName for file path (allows Hebrew & other Unicode characters, but safe from path traversal)
             store_name = metadata.get("storeName") or "unknown_store"
             import re
-            clean_store_name = re.sub(r'[^a-zA-Z0-9_\-]', '', store_name.replace(' ', '_')).lower()
+            clean_store_name = re.sub(r'[\x00-\x1f\\/*?:"<>|]', '_', store_name.replace(' ', '_'))
+            clean_store_name = re.sub(r'_{2,}', '_', clean_store_name).strip('._').lower()
             if not clean_store_name:
                 clean_store_name = "unknown_store"
 

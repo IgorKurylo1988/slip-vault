@@ -71,11 +71,7 @@ class GCSStorage(CloudStorage):
             blob.upload_from_string(image_data, content_type="image/jpeg")
             
             # Formulate URL
-            emulator_host = os.getenv("STORAGE_EMULATOR_HOST")
-            if emulator_host:
-                gcs_url = f"{emulator_host}/{bucket_name}/{blob_name}"
-            else:
-                gcs_url = f"https://storage.googleapis.com/{bucket_name}/{blob_name}"
+            gcs_url = f"https://storage.googleapis.com/{bucket_name}/{blob_name}"
                 
             logger.info(f"Uploaded to GCS: {gcs_url}")
             return gcs_url
@@ -103,7 +99,26 @@ class GCSStorage(CloudStorage):
             client = storage.Client()
             bucket = client.bucket(bucket_name)
             blob = bucket.blob(blob_name)
-            return blob.download_as_bytes()
+            try:
+                return blob.download_as_bytes()
+            except Exception as download_err:
+                # If download fails and it is a pending path, search for a renamed file under the same prefix
+                if "/pending/" in blob_name:
+                    logger.info(f"Pending blob not found. Searching for renamed version of {blob_name}...")
+                    parts = blob_name.split("/")
+                    # Format: user_id/timestamp_str/pending/invoice_id.jpg
+                    if len(parts) >= 4:
+                        user_id = parts[0]
+                        timestamp_str = parts[1]
+                        invoice_id = parts[-1].replace(".jpg", "")
+                        
+                        prefix = f"{user_id}/{timestamp_str}/"
+                        blobs = client.list_blobs(bucket, prefix=prefix)
+                        for b in blobs:
+                            if b.name.endswith(f"/{invoice_id}.jpg"):
+                                logger.info(f"Found renamed blob: {b.name}. Downloading...")
+                                return b.download_as_bytes()
+                raise download_err
         except Exception as e:
             logger.error(f"GCS download failed: {str(e)}")
             raise e
@@ -133,15 +148,19 @@ class GCSStorage(CloudStorage):
 
             new_blob_name = f"{new_user_id}/{new_timestamp}/{new_store_name}/{file_name}.jpg"
             
-            # GCS rename is copy + delete
-            new_blob = bucket.copy_blob(old_blob, bucket, new_blob_name)
-            old_blob.delete()
+            try:
+                # GCS rename is copy + delete
+                new_blob = bucket.copy_blob(old_blob, bucket, new_blob_name)
+                old_blob.delete()
+            except Exception as rename_err:
+                # Check if the renamed target already exists
+                check_blob = bucket.blob(new_blob_name)
+                if check_blob.exists():
+                    logger.info(f"Renamed target already exists: {new_blob_name}. Continuing.")
+                else:
+                    raise rename_err
 
-            emulator_host = os.getenv("STORAGE_EMULATOR_HOST")
-            if emulator_host:
-                new_url = f"{emulator_host}/{bucket_name}/{new_blob_name}"
-            else:
-                new_url = f"https://storage.googleapis.com/{bucket_name}/{new_blob_name}"
+            new_url = f"https://storage.googleapis.com/{bucket_name}/{new_blob_name}"
                 
             logger.info(f"Renamed GCS blob from {old_blob_name} to {new_blob_name}")
             return new_url
