@@ -3,11 +3,6 @@ import {
   id = "projects/lithe-saga-103615/locations/europe-central2/services/slip-vault-notification"
 }
 
-import {
-  to = module.notification_service.google_cloud_run_v2_service_iam_member.public_access[0]
-  id = "projects/lithe-saga-103615/locations/europe-central2/services/slip-vault-notification roles/run.invoker allUsers"
-}
-
 module "notification_service" {
   source                = "../../modules/cloud_run_service"
   service_name          = "slip-vault-notification"
