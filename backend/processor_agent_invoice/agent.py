@@ -81,14 +81,14 @@ def run_agentic_task(invoice_id: str, gcs_url: str, user_id: str, timestamp_str:
             if not clean_store_name:
                 clean_store_name = "unknown_store"
 
-            # 3. Rename GCS blob to /userid/dd-mm-yyyy-timestamp/store-name/invoice_id.jpg
+            # 3. Rename GCS blob to /userid/dd-mm-yyyy-timestamp/store-name/store-name_invoice_id.jpg
             from common.storage import get_storage_provider
             new_gcs_url = get_storage_provider().rename_image(
                 old_url=gcs_url,
                 new_user_id=user_id,
                 new_timestamp=timestamp_str,
                 new_store_name=clean_store_name,
-                file_name=invoice_id
+                file_name=f"{clean_store_name}_{invoice_id}"
             )
             metadata["scannedImage"] = new_gcs_url
 

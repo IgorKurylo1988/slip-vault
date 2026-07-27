@@ -115,7 +115,7 @@ class GCSStorage(CloudStorage):
                         prefix = f"{user_id}/{timestamp_str}/"
                         blobs = client.list_blobs(bucket, prefix=prefix)
                         for b in blobs:
-                            if b.name.endswith(f"/{invoice_id}.jpg"):
+                            if invoice_id in b.name and b.name.endswith(".jpg"):
                                 logger.info(f"Found renamed blob: {b.name}. Downloading...")
                                 return b.download_as_bytes()
                 raise download_err

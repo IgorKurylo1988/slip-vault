@@ -26,7 +26,7 @@ VERIFICATION RULES:
 - The document MUST be a refundable/credit document.
 
 EXTRACT THESE FIELDS:
-- storeName: The shop or merchant name (normally printed as the prominent, large, bold title at the very top of the receipt).
+- storeName: The shop or merchant name (normally printed as the prominent, large, bold title at the very top of the receipt). Translate or transliterate this name to English (e.g., "Shufersal" instead of "שופרסל", "Coca-Cola" instead of "קוקה קולה") so it is always in English.
 - storeAddress: Full address if visible.
 - date: YYYY-MM-DD.
 - time: HH:MM.
