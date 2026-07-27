@@ -8,6 +8,7 @@ type FilterType = 'ALL' | 'INVOICE' | 'CREDIT_INVOICE';
 
 interface DashboardProps {
   invoices: InvoiceData[];
+  activeTasks: { id: string; name: string }[];
   isLoading: boolean;
   onScanClick: () => void;
   onUploadClick: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -23,6 +24,7 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ 
   invoices, 
+  activeTasks,
   isLoading, 
   onScanClick, 
   onUploadClick, 
@@ -177,6 +179,20 @@ const Dashboard: React.FC<DashboardProps> = ({
       {/* List Section */}
       <div className="flex-1 overflow-hidden flex flex-col">
         <div className="flex-1 overflow-y-auto px-6 pb-24 space-y-3 no-scrollbar relative">
+           {activeTasks && activeTasks.map(task => (
+             <div key={task.id} className="h-16 bg-emerald-500/10 dark:bg-emerald-950/20 border border-emerald-550/20 dark:border-emerald-900/30 rounded-xl px-4 flex items-center justify-between shadow-sm animate-pulse shrink-0">
+               <div className="flex items-center gap-3">
+                 <div className="w-5 h-5 rounded-full border-2 border-emerald-500/30 border-t-emerald-500 animate-spin shrink-0"></div>
+                 <div>
+                   <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Analyzing Receipt...</p>
+                   <p className="text-[9px] font-mono text-slate-400 dark:text-slate-500">ID: {task.id.slice(0, 8)}...</p>
+                 </div>
+               </div>
+               <span className="text-[9px] bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">
+                 Processing
+               </span>
+             </div>
+           ))}
            {isLoading ? (
              <div className="space-y-3 mt-1">
                {[1, 2, 3, 4].map(i => (

@@ -13,6 +13,7 @@ const App: React.FC = () => {
   const [state, setState] = useState<AppState>(AppState.IDLE);
   const [invoiceData, setInvoiceData] = useState<InvoiceData | null>(null);
   const [invoices, setInvoices] = useState<InvoiceData[]>([]);
+  const [activeTasks, setActiveTasks] = useState<{ id: string; name: string }[]>([]);
   const [errorMsg, setErrorMsg] = useState<string>("");
   
   // Lifted filters/search state
@@ -72,27 +73,38 @@ const App: React.FC = () => {
   }, []);
 
   const handleCapture = async (base64Image: string) => {
-    setState(AppState.PROCESSING);
+    // Navigate back to IDLE so the user can continue using the dashboard
+    setState(AppState.IDLE);
+    
+    // Create a temporary task ID to show progress until we get the actual ID from API
+    const tempTaskId = `uploading-${Date.now()}`;
+    setActiveTasks(prev => [...prev, { id: tempTaskId, name: "Uploading receipt..." }]);
+    
     try {
       const pendingData = await processInvoiceImage(base64Image, userId);
       const invoiceId = pendingData.id;
       
-      // Connect to WebSocket notification channel for this invoice ID
+      // Swap the temp ID for the actual invoice ID
+      setActiveTasks(prev => prev.map(t => t.id === tempTaskId ? { id: invoiceId, name: "Processing..." } : t));
+      
+      // Connect to WebSocket notification channel for this invoice ID in the background
       listenToInvoiceNotification(
         invoiceId,
         (completedData) => {
-          setInvoiceData(completedData);
-          setState(AppState.VIEWING);
+          // Remove from active tasks
+          setActiveTasks(prev => prev.filter(t => t.id !== invoiceId));
+          // Prepend the new invoice to history list
+          setInvoices(prev => [completedData, ...prev.filter(i => i.id !== completedData.id)]);
         },
         (errorReason) => {
-          setErrorMsg(errorReason);
-          setState(AppState.ERROR);
+          setActiveTasks(prev => prev.filter(t => t.id !== invoiceId));
+          alert(`Receipt analysis failed: ${errorReason}`);
         }
       );
     } catch (error) {
       console.error(error);
-      setErrorMsg(error instanceof Error ? error.message : "An error occurred");
-      setState(AppState.ERROR);
+      setActiveTasks(prev => prev.filter(t => t.id !== tempTaskId));
+      alert(`Upload failed: ${error instanceof Error ? error.message : "An error occurred"}`);
     }
   };
 
@@ -217,6 +229,7 @@ const App: React.FC = () => {
           <div className={`h-full w-full md:w-[350px] md:shrink-0 md:border-r md:border-slate-200 dark:border-slate-800 ${state === AppState.IDLE ? 'block' : 'hidden md:block'}`}>
             <Dashboard 
               invoices={invoices}
+              activeTasks={activeTasks}
               isLoading={isLoadingInvoices}
               onScanClick={() => setState(AppState.SCANNING)}
               onUploadClick={handleFileUpload}
