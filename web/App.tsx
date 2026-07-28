@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { AppState, InvoiceData } from './types';
 import { processInvoiceImage } from './services/invoiceService';
 import { fetchInvoices, saveInvoiceToStorage, deleteInvoiceFromStorage } from './services/storageService';
-import { requestNotificationPermission, listenToInvoiceNotification } from './services/notificationService';
+import { requestNotificationPermission, pollInvoiceStatus } from './services/notificationService';
 import CameraCapture from './components/CameraCapture';
 import ReceiptView from './components/ReceiptView';
 import Dashboard from './components/Dashboard';
@@ -27,14 +27,8 @@ const App: React.FC = () => {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
-  // User ID for multi-tenant path structure
-  const [userId] = useState<string>(() => {
-    const saved = localStorage.getItem('userId');
-    if (saved) return saved;
-    const newId = `user_${Math.random().toString(36).substring(2, 10)}`;
-    localStorage.setItem('userId', newId);
-    return newId;
-  });
+  // User ID for multi-tenant path structure (stable for consistent testing across sessions)
+  const [userId] = useState<string>("user_test_stable");
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -87,8 +81,8 @@ const App: React.FC = () => {
       // Swap the temp ID for the actual invoice ID
       setActiveTasks(prev => prev.map(t => t.id === tempTaskId ? { id: invoiceId, name: "Processing..." } : t));
       
-      // Connect to WebSocket notification channel for this invoice ID in the background
-      listenToInvoiceNotification(
+      // Poll status of the invoice ID in the background
+      pollInvoiceStatus(
         invoiceId,
         (completedData) => {
           // Remove from active tasks

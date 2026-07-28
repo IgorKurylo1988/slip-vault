@@ -1,15 +1,18 @@
 import os
 import sys
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, status
+from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 # Add the parent backend folder to sys.path to allow importing from the common folder
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from common.notification import notification_service
+from common import db
 
-app = FastAPI(title="Slip Vault Notification Service", version="1.0.0")
+# Initialize Firestore
+db.init_db()
+
+app = FastAPI(title="Slip Vault Notification Service (Polling)", version="1.0.0")
 
 origins = [
     "https://slip-vault.com",
@@ -33,25 +36,18 @@ class ProcessingCallbackRequest(BaseModel):
     status: str  # "COMPLETED" or "ERROR"
     data: dict
 
-@app.websocket("/ws/notifications/{invoice_id}")
-async def websocket_endpoint(websocket: WebSocket, invoice_id: str):
-    """WebSocket endpoint for clients to listen to real-time status updates of an invoice"""
-    await notification_service.register(invoice_id, websocket)
-    try:
-        while True:
-            # Keep the socket open and listen for incoming messages (e.g. pings/keepalives)
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        notification_service.unregister(invoice_id, websocket)
-    except Exception:
-        notification_service.unregister(invoice_id, websocket)
+# In-memory status cache for instant polling lookups
+invoice_statuses = {}
 
 @app.post("/api/invoices/{invoice_id}/callback")
 async def processing_callback(invoice_id: str, req: ProcessingCallbackRequest):
-    """Callback endpoint for the worker to notify WebSocket clients of completion"""
+    """Callback endpoint for the worker to notify of completion/error"""
     try:
-        # Broadcast the processing finish status to connected websocket clients
-        await notification_service.notify_processing_finished(invoice_id, req.status, req.data)
+        # Cache the result for quick client polling
+        invoice_statuses[invoice_id] = {
+            "status": req.status,
+            "data": req.data
+        }
         return {"status": "success"}
     except Exception as e:
         raise HTTPException(
@@ -59,6 +55,30 @@ async def processing_callback(invoice_id: str, req: ProcessingCallbackRequest):
             detail=f"Failed to handle processing callback: {str(e)}"
         )
 
+@app.get("/api/invoices/{invoice_id}/status")
+async def get_invoice_status(invoice_id: str):
+    """Client polling endpoint to check invoice status"""
+    # 1. Check in-memory cache first
+    if invoice_id in invoice_statuses:
+        return invoice_statuses[invoice_id]
+
+    # 2. Check Firestore Database
+    try:
+        inv = db.get_invoice_by_id(invoice_id)
+        if inv:
+            return {
+                "status": inv.get("status"),
+                "data": inv
+            }
+    except Exception:
+        pass
+
+    # 3. Default fallback to PROCESSING
+    return {
+        "status": "PROCESSING",
+        "data": None
+    }
+
 @app.get("/")
 async def root():
-    return {"message": "Slip Vault Notification Service is running."}
+    return {"message": "Slip Vault Notification Polling Service is running."}

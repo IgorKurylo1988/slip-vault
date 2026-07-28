@@ -50,8 +50,9 @@ def get_invoice_by_id(invoice_id: str):
 def get_all_invoices():
     """Returns only finalized (COMPLETED) invoices"""
     try:
+        from google.cloud.firestore_v1.base_query import FieldFilter
         client = get_firestore_client()
-        docs = client.collection("invoices").where("status", "==", "COMPLETED").stream()
+        docs = client.collection("invoices").where(filter=FieldFilter("status", "==", "COMPLETED")).stream()
         results = [doc.to_dict() for doc in docs]
         # Sort locally to avoid custom index generation overhead on GCP
         results.sort(key=lambda x: x.get("createdAt", 0), reverse=True)

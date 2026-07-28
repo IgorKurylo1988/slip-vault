@@ -28,46 +28,55 @@ export const sendBrowserNotification = (title: string, body: string): void => {
 };
 
 /**
- * Subscribes to real-time WebSocket notifications for a specific invoice ID.
+ * Polls the notification service for status updates of a specific invoice ID.
  */
-export const listenToInvoiceNotification = (
+export const pollInvoiceStatus = (
   invoiceId: string,
   onComplete: (data: any) => void,
   onError: (error: string) => void
-): WebSocket | null => {
-  if (typeof window === 'undefined') return null;
+): () => void => {
+  if (typeof window === 'undefined') return () => {};
   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  const wsUrl = isLocal 
-    ? `ws://localhost:8001/ws/notifications/${invoiceId}`
-    : `wss://notifications.slip-vault.com/ws/notifications/${invoiceId}`;
+  const baseUrl = isLocal 
+    ? 'http://localhost:8001'
+    : 'https://notifications.slip-vault.com';
+    
+  const url = `${baseUrl}/api/invoices/${invoiceId}/status`;
   
-  const ws = new WebSocket(wsUrl);
-
-  ws.onmessage = (event) => {
+  let isStopped = false;
+  
+  const checkStatus = async () => {
+    if (isStopped) return;
     try {
-      const payload = JSON.parse(event.data);
-      if (payload.event === 'processing_finished') {
-        if (payload.status === 'COMPLETED') {
-          sendBrowserNotification(
-            'Invoice Processed Successfully! 💳',
-            `Extracted details from ${payload.data?.storeName || 'the store'}.`
-          );
-          onComplete(payload.data);
-        } else if (payload.status === 'ERROR') {
-          const errMsg = payload.data?.error || 'Document type was invalid.';
-          sendBrowserNotification('Invoice Processing Failed ❌', errMsg);
-          onError(errMsg);
-        }
-        ws.close();
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Status check failed");
+      const result = await response.json();
+      
+      if (result.status === 'COMPLETED') {
+        sendBrowserNotification(
+          'Invoice Processed Successfully! 💳',
+          `Extracted details from ${result.data?.storeName || 'the store'}.`
+        );
+        onComplete(result.data);
+      } else if (result.status === 'ERROR') {
+        const errMsg = result.data?.error || 'Document type was invalid.';
+        sendBrowserNotification('Invoice Processing Failed ❌', errMsg);
+        onError(errMsg);
+      } else {
+        // Still processing, poll again in 2 seconds
+        setTimeout(checkStatus, 2000);
       }
     } catch (err) {
-      console.error('Error parsing WebSocket notification payload:', err);
+      console.warn("Polling error, retrying in 3 seconds...", err);
+      setTimeout(checkStatus, 3000);
     }
   };
-
-  ws.onerror = (err) => {
-    console.error('WebSocket connection error:', err);
+  
+  // Start polling
+  setTimeout(checkStatus, 1000);
+  
+  // Return cleanup cancel function
+  return () => {
+    isStopped = true;
   };
-
-  return ws;
 };
