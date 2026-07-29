@@ -15,6 +15,7 @@ const App: React.FC = () => {
   const [invoices, setInvoices] = useState<InvoiceData[]>([]);
   const [activeTasks, setActiveTasks] = useState<{ id: string; name: string }[]>([]);
   const [errorMsg, setErrorMsg] = useState<string>("");
+  const [dialogMessage, setDialogMessage] = useState<{ title: string; message: string; type: 'error' | 'info' } | null>(null);
   
   // Lifted filters/search state
   const [filter, setFilter] = useState<'ALL' | 'INVOICE' | 'CREDIT_INVOICE'>('ALL');
@@ -92,13 +93,21 @@ const App: React.FC = () => {
         },
         (errorReason) => {
           setActiveTasks(prev => prev.filter(t => t.id !== invoiceId));
-          alert(`Receipt analysis failed: ${errorReason}`);
+          setDialogMessage({
+            title: "Analysis Failed",
+            message: errorReason,
+            type: "error"
+          });
         }
       );
     } catch (error) {
       console.error(error);
       setActiveTasks(prev => prev.filter(t => t.id !== tempTaskId));
-      alert(`Upload failed: ${error instanceof Error ? error.message : "An error occurred"}`);
+      setDialogMessage({
+        title: "Upload Failed",
+        message: error instanceof Error ? error.message : "An error occurred",
+        type: "error"
+      });
     }
   };
 
@@ -442,6 +451,30 @@ const App: React.FC = () => {
            <h3 className="text-2xl font-bold text-slate-900 mb-2">Oops!</h3>
            <p className="text-slate-500 text-center mb-10 px-4 leading-relaxed">{errorMsg}</p>
            <Button onClick={resetApp} variant="primary" className="w-full max-w-xs">Try Again</Button>
+        </div>
+      )}
+
+      {/* Premium Dialog Modal */}
+      {dialogMessage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100 dark:border-slate-800 flex flex-col items-center text-center animate-in scale-in duration-300">
+            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 text-2xl ${dialogMessage.type === 'error' ? 'bg-red-50 dark:bg-red-950/30 text-red-500' : 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-500'}`}>
+              {dialogMessage.type === 'error' ? '⚠️' : 'ℹ️'}
+            </div>
+            <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100 mb-2">
+              {dialogMessage.title}
+            </h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
+              {dialogMessage.message}
+            </p>
+            <Button 
+              onClick={() => setDialogMessage(null)} 
+              variant="primary" 
+              className={`w-full h-11 ${dialogMessage.type === 'error' ? 'bg-red-500 hover:bg-red-600 shadow-red-200/50' : ''}`}
+            >
+              Okay
+            </Button>
+          </div>
         </div>
       )}
     </div>
