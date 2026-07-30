@@ -70,10 +70,12 @@ const preprocessImageToScanStyle = (base64Input: string): Promise<string> => {
 const processInvoiceImage = async (base64Image: string, userId?: string): Promise<any> => {
   const scannedImage = await preprocessImageToScanStyle(base64Image);
 
+  const token = localStorage.getItem('token') || '';
   const response = await fetch(`${API_URL}/process-invoice`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
     },
     body: JSON.stringify({ 
       image: scannedImage,

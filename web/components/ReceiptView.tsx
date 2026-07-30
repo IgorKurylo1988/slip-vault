@@ -318,7 +318,15 @@ const ReceiptView: React.FC<ReceiptViewProps> = ({
            </div>
            <div className="flex-1 flex items-center justify-center overflow-hidden bg-gray-900 rounded-lg border border-gray-800 relative">
              <img 
-               src={data.scannedImage.startsWith('http') || data.scannedImage.startsWith('data:') ? data.scannedImage : `data:image/jpeg;base64,${data.scannedImage}`} 
+               src={
+                 data.scannedImage.startsWith('data:') 
+                   ? data.scannedImage 
+                   : data.scannedImage.startsWith('http')
+                     ? data.scannedImage.includes('storage.googleapis.com/slip-vault-receipts/')
+                       ? `https://assets.slip-vault.com/${data.scannedImage.split('storage.googleapis.com/slip-vault-receipts/')[1]}?token=${localStorage.getItem('token') || ''}`
+                       : `${data.scannedImage}?token=${localStorage.getItem('token') || ''}`
+                     : `data:image/jpeg;base64,${data.scannedImage}`
+               } 
                alt="Processed Scan" 
                className="max-w-full max-h-full object-contain"
              />

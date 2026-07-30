@@ -8,8 +8,18 @@ const getApiUrl = (path: string) => {
 
 const API_URL = getApiUrl('/api/invoices');
 
+const getAuthHeaders = (extraHeaders: Record<string, string> = {}) => {
+  const token = localStorage.getItem('token') || '';
+  return {
+    'Authorization': `Bearer ${token}`,
+    ...extraHeaders
+  };
+};
+
 export const fetchInvoices = async (): Promise<InvoiceData[]> => {
-  const response = await fetch(API_URL);
+  const response = await fetch(API_URL, {
+    headers: getAuthHeaders()
+  });
   if (!response.ok) {
     throw new Error("Failed to fetch invoices from the backend service.");
   }
@@ -25,9 +35,9 @@ export const saveInvoiceToStorage = async (invoice: InvoiceData): Promise<Invoic
 
   const response = await fetch(API_URL, {
     method: 'POST',
-    headers: {
+    headers: getAuthHeaders({
       'Content-Type': 'application/json',
-    },
+    }),
     body: JSON.stringify(invoiceToSave),
   });
 
@@ -41,6 +51,7 @@ export const saveInvoiceToStorage = async (invoice: InvoiceData): Promise<Invoic
 export const deleteInvoiceFromStorage = async (id: string): Promise<void> => {
   const response = await fetch(`${API_URL}/${id}`, {
     method: 'DELETE',
+    headers: getAuthHeaders()
   });
 
   if (!response.ok) {

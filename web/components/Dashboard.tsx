@@ -176,8 +176,8 @@ const Dashboard: React.FC<DashboardProps> = ({
           </button>
       </div>
 
-      {/* List Section */}
-      <div className="flex-1 overflow-hidden flex flex-col">
+      {/* List Section - Mobile Only */}
+      <div className="flex-1 overflow-hidden flex flex-col md:hidden">
         <div className="flex-1 overflow-y-auto px-6 pb-24 space-y-3 no-scrollbar relative">
            {activeTasks && activeTasks.map(task => (
              <div key={task.id} className="h-16 bg-emerald-500/10 dark:bg-emerald-950/20 border border-emerald-550/20 dark:border-emerald-900/30 rounded-xl px-4 flex items-center justify-between shadow-sm animate-pulse shrink-0">

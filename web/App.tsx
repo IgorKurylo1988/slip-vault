@@ -16,6 +16,7 @@ const App: React.FC = () => {
   const [activeTasks, setActiveTasks] = useState<{ id: string; name: string }[]>([]);
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [dialogMessage, setDialogMessage] = useState<{ title: string; message: string; type: 'error' | 'info' } | null>(null);
+  const [expandedGroups, setExpandedGroups] = useState<{ [key: string]: boolean }>({});
   
   // Lifted filters/search state
   const [filter, setFilter] = useState<'ALL' | 'INVOICE' | 'CREDIT_INVOICE'>('ALL');
@@ -28,8 +29,16 @@ const App: React.FC = () => {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
-  // User ID for multi-tenant path structure (stable for consistent testing across sessions)
-  const [userId] = useState<string>("user_test_stable");
+  // Authenticated user state
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'));
+  const [userId, setUserId] = useState<string>(() => localStorage.getItem('userId') || "");
+  const [userEmail, setUserEmail] = useState<string>(() => localStorage.getItem('userEmail') || "");
+
+  // Authentication UI state
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [authLoading, setAuthLoading] = useState(false);
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -43,6 +52,64 @@ const App: React.FC = () => {
   const toggleTheme = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
   };
+
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!authEmail || !authPassword) {
+      setDialogMessage({
+        title: "Validation Error",
+        message: "Please enter both email and password.",
+        type: "error"
+      });
+      return;
+    }
+    
+    setAuthLoading(true);
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const baseUrl = isLocal ? 'http://localhost:8000' : 'https://api.slip-vault.com';
+    const endpoint = isRegistering ? '/api/auth/register' : '/api/auth/login';
+    
+    try {
+      const response = await fetch(`${baseUrl}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: authEmail, password: authPassword }),
+      });
+      
+      const resData = await response.json();
+      if (!response.ok) {
+        throw new Error(resData.detail || "Authentication failed");
+      }
+      
+      localStorage.setItem('token', resData.token);
+      localStorage.setItem('userId', resData.userId);
+      localStorage.setItem('userEmail', resData.email);
+      
+      setToken(resData.token);
+      setUserId(resData.userId);
+      setUserEmail(resData.email);
+      setAuthPassword(""); // clear password
+      setAuthEmail("");
+    } catch (err) {
+      setDialogMessage({
+        title: isRegistering ? "Registration Failed" : "Login Failed",
+        message: err instanceof Error ? err.message : "Network error occurred",
+        type: "error"
+      });
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userEmail');
+    setToken(null);
+    setUserId("");
+    setUserEmail("");
+    setInvoices([]);
+  };
   
   // Loading states
   const [isLoadingInvoices, setIsLoadingInvoices] = useState(false);
@@ -52,6 +119,7 @@ const App: React.FC = () => {
   // Load invoices on mount and request notification permissions
   useEffect(() => {
     requestNotificationPermission();
+    if (!token) return;
     
     const loadData = async () => {
       setIsLoadingInvoices(true);
@@ -65,7 +133,7 @@ const App: React.FC = () => {
       }
     };
     loadData();
-  }, []);
+  }, [token]);
 
   const handleCapture = async (base64Image: string) => {
     // Navigate back to IDLE so the user can continue using the dashboard
@@ -192,6 +260,47 @@ const App: React.FC = () => {
     });
   }, [invoices, filter, searchQuery]);
 
+  // Group invoices by invoiceNumber to build a tree view
+  const groupedInvoices = useMemo(() => {
+    const groups: { [key: string]: InvoiceData[] } = {};
+    const singletons: InvoiceData[] = [];
+    
+    desktopFilteredInvoices.forEach(inv => {
+      const invNum = inv.invoiceNumber?.trim();
+      if (!invNum) {
+        singletons.push(inv);
+        return;
+      }
+      if (!groups[invNum]) {
+        groups[invNum] = [];
+      }
+      groups[invNum].push(inv);
+    });
+    
+    const tree: { parent: InvoiceData; children: InvoiceData[] }[] = [];
+    
+    Object.keys(groups).forEach(invNum => {
+      const list = groups[invNum];
+      list.sort((a, b) => {
+        if (a.type === 'INVOICE' && b.type === 'CREDIT_INVOICE') return -1;
+        if (a.type === 'CREDIT_INVOICE' && b.type === 'INVOICE') return 1;
+        return (a.createdAt || 0) - (b.createdAt || 0);
+      });
+      
+      const parent = list[0];
+      const children = list.slice(1);
+      tree.push({ parent, children });
+    });
+    
+    singletons.forEach(inv => {
+      tree.push({ parent: inv, children: [] });
+    });
+    
+    // Sort tree by parent date descending
+    tree.sort((a, b) => (b.parent.createdAt || 0) - (a.parent.createdAt || 0));
+    return tree;
+  }, [desktopFilteredInvoices]);
+
   // Shared Logo Component
   const AppLogo = () => (
     <div className="w-24 h-24 mb-6 relative rounded-[1.5rem] bg-gradient-to-tr from-emerald-500 to-green-400 shadow-[0_10px_30px_-5px_rgba(16,185,129,0.4)] flex items-center justify-center overflow-hidden border border-white/10 group shrink-0">
@@ -222,6 +331,95 @@ const App: React.FC = () => {
     </div>
   );
 
+  if (!token) {
+    return (
+      <div className={`w-full min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-950 transition-colors duration-300`}>
+        {/* Theme toggle in login */}
+        <div className="absolute top-4 right-4">
+          <button onClick={toggleTheme} className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 shadow-sm hover:scale-105 transition-transform">
+            {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+          </button>
+        </div>
+        
+        <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 shadow-2xl border border-slate-100 dark:border-slate-800 animate-in fade-in duration-300">
+          <div className="flex flex-col items-center mb-8">
+            <div className="w-16 h-16 rounded-[1.25rem] bg-gradient-to-tr from-emerald-500 to-green-400 shadow-[0_8px_24px_rgba(16,185,129,0.3)] flex items-center justify-center mb-4">
+              <Receipt className="text-white w-8 h-8" />
+            </div>
+            <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100">
+              {isRegistering ? "Join Slip Vault" : "Welcome Back"}
+            </h2>
+            <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
+              {isRegistering ? "Create your secure multi-tenant account" : "Manage your digitized credit receipts"}
+            </p>
+          </div>
+          
+          <form onSubmit={handleAuth} className="space-y-4">
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1.5 ml-1">Email Address</label>
+              <input 
+                type="email" 
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full h-12 px-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-sm transition-colors"
+                required
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1.5 ml-1">Password</label>
+              <input 
+                type="password" 
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full h-12 px-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-sm transition-colors"
+                required
+              />
+            </div>
+            
+            <Button 
+              type="submit" 
+              variant="primary" 
+              className="w-full h-12 mt-2 shadow-emerald-200/50" 
+              disabled={authLoading}
+              icon={authLoading ? <Loader2 className="animate-spin" /> : undefined}
+            >
+              {authLoading ? "Please wait..." : isRegistering ? "Sign Up" : "Log In"}
+            </Button>
+          </form>
+          
+          <div className="text-center mt-6 pt-4 border-t border-slate-100 dark:border-slate-800/60">
+            <button 
+              onClick={() => {
+                setIsRegistering(!isRegistering);
+                setAuthEmail("");
+                setAuthPassword("");
+              }}
+              className="text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 transition-colors uppercase tracking-wider"
+            >
+              {isRegistering ? "Already have an account? Log In" : "New to Slip Vault? Create Account"}
+            </button>
+          </div>
+        </div>
+
+        {/* Custom dialog in Login Screen */}
+        {dialogMessage && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100 dark:border-slate-800 flex flex-col items-center text-center">
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 text-2xl bg-red-50 dark:bg-red-950/30 text-red-500">
+                ⚠️
+              </div>
+              <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100 mb-2">{dialogMessage.title}</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">{dialogMessage.message}</p>
+              <Button onClick={() => setDialogMessage(null)} variant="primary" className="w-full h-11 bg-red-500 hover:bg-red-600">Okay</Button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="h-full w-full bg-slate-100 flex overflow-hidden dark:bg-slate-950">
       
@@ -229,22 +427,37 @@ const App: React.FC = () => {
       {(state === AppState.IDLE || state === AppState.VIEWING) && (
         <div className="flex-1 flex h-full w-full overflow-hidden">
           {/* Left Panel: Dashboard / Sidebar on desktop */}
-          <div className={`h-full w-full md:w-[350px] md:shrink-0 md:border-r md:border-slate-200 dark:border-slate-800 ${state === AppState.IDLE ? 'block' : 'hidden md:block'}`}>
-            <Dashboard 
-              invoices={invoices}
-              activeTasks={activeTasks}
-              isLoading={isLoadingInvoices}
-              onScanClick={() => setState(AppState.SCANNING)}
-              onUploadClick={handleFileUpload}
-              onInvoiceClick={handleViewInvoice}
-              AppLogo={AppLogo}
-              filter={filter}
-              setFilter={setFilter}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              theme={theme}
-              toggleTheme={toggleTheme}
-            />
+          <div className={`h-full w-full md:w-[350px] md:shrink-0 md:border-r md:border-slate-200 dark:border-slate-800 ${state === AppState.IDLE ? 'block' : 'hidden md:block'} flex flex-col`}>
+            <div className="flex-1 overflow-hidden">
+              <Dashboard 
+                invoices={invoices}
+                activeTasks={activeTasks}
+                isLoading={isLoadingInvoices}
+                onScanClick={() => setState(AppState.SCANNING)}
+                onUploadClick={handleFileUpload}
+                onInvoiceClick={handleViewInvoice}
+                AppLogo={AppLogo}
+                filter={filter}
+                setFilter={setFilter}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                theme={theme}
+                toggleTheme={toggleTheme}
+              />
+            </div>
+            {/* User Profile / Logout Bar at bottom of sidebar */}
+            <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
+              <div className="flex flex-col truncate max-w-[180px]">
+                <span className="text-[9px] text-slate-400 dark:text-slate-500 uppercase font-black tracking-wider">Logged In As</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">{userEmail}</span>
+              </div>
+              <button 
+                onClick={handleLogout}
+                className="px-2.5 py-1 text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-900/30 rounded-lg transition-colors uppercase tracking-wider"
+              >
+                Logout
+              </button>
+            </div>
           </div>
 
           {/* Right/Center Panel: Search Invoice and Receipt Table or Dashboard Metrics */}
@@ -372,41 +585,104 @@ const App: React.FC = () => {
                                   <td colSpan={6} className="px-6 py-5"><div className="h-4 bg-slate-100 dark:bg-slate-800 rounded"></div></td>
                                 </tr>
                               ))
-                            ) : desktopFilteredInvoices.length === 0 ? (
+                            ) : groupedInvoices.length === 0 ? (
                               <tr>
                                 <td colSpan={6} className="px-6 py-12 text-center text-slate-400 dark:text-slate-500 italic">No receipts found matching search/filter criteria.</td>
                               </tr>
                             ) : (
-                              desktopFilteredInvoices.map((inv) => (
-                                <tr 
-                                  key={inv.id} 
-                                  onClick={() => handleViewInvoice(inv)}
-                                  className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 cursor-pointer transition-colors group text-sm"
-                                >
-                                  <td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-100">{inv.storeName}</td>
-                                  <td className="px-6 py-4 font-mono text-xs text-slate-500 dark:text-slate-400">{inv.invoiceNumber || '-'}</td>
-                                  <td className="px-6 py-4 text-slate-600 dark:text-slate-350">{inv.date}</td>
-                                  <td className="px-6 py-4">
-                                    {inv.type === 'CREDIT_INVOICE' ? (
-                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-bold rounded-full bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-900/50">
-                                        <CreditCard size={11} /> Credit
-                                      </span>
-                                    ) : (
-                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-900/50">
-                                        <Receipt size={11} /> Invoice
-                                      </span>
-                                    )}
-                                  </td>
-                                  <td className={`px-6 py-4 text-right font-bold ${inv.type === 'CREDIT_INVOICE' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-800 dark:text-slate-100'}`}>
-                                    {inv.type === 'CREDIT_INVOICE' ? '-' : ''}{inv.currency}{inv.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                  </td>
-                                  <td className="px-6 py-4 text-center">
-                                    <button className="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-50 text-slate-500 group-hover:bg-slate-800 group-hover:text-white dark:bg-slate-800 dark:text-slate-400 dark:group-hover:bg-slate-100 dark:group-hover:text-slate-900 transition-colors">
-                                      View
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))
+                              groupedInvoices.map((group) => {
+                                const parent = group.parent;
+                                const children = group.children;
+                                const hasChildren = children.length > 0;
+                                const isExpanded = !!expandedGroups[parent.id];
+                                
+                                return (
+                                  <React.Fragment key={parent.id}>
+                                    {/* Parent Row */}
+                                    <tr 
+                                      onClick={() => handleViewInvoice(parent)}
+                                      className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 cursor-pointer transition-colors group text-sm"
+                                    >
+                                      <td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                        {hasChildren && (
+                                          <button 
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setExpandedGroups(prev => ({ ...prev, [parent.id]: !prev[parent.id] }));
+                                            }}
+                                            className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-805 transition-colors"
+                                          >
+                                            <span className={`text-[10px] block transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}>▶</span>
+                                          </button>
+                                        )}
+                                        {!hasChildren && <span className="w-4 shrink-0"></span>}
+                                        {parent.storeName}
+                                        {hasChildren && (
+                                          <span className="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-450 px-1.5 py-0.5 rounded-full font-bold ml-1">
+                                            {children.length + 1} docs
+                                          </span>
+                                        )}
+                                      </td>
+                                      <td className="px-6 py-4 font-mono text-xs text-slate-500 dark:text-slate-400">{parent.invoiceNumber || '-'}</td>
+                                      <td className="px-6 py-4 text-slate-600 dark:text-slate-350">{parent.date}</td>
+                                      <td className="px-6 py-4">
+                                        {parent.type === 'CREDIT_INVOICE' ? (
+                                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-bold rounded-full bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-900/50">
+                                            <CreditCard size={11} /> Credit
+                                          </span>
+                                        ) : (
+                                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-900/50">
+                                            <Receipt size={11} /> Invoice
+                                          </span>
+                                        )}
+                                      </td>
+                                      <td className={`px-6 py-4 text-right font-bold ${parent.type === 'CREDIT_INVOICE' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-800 dark:text-slate-100'}`}>
+                                        {parent.type === 'CREDIT_INVOICE' ? '-' : ''}{parent.currency}{parent.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                      </td>
+                                      <td className="px-6 py-4 text-center">
+                                        <button className="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-50 text-slate-500 group-hover:bg-slate-800 group-hover:text-white dark:bg-slate-800 dark:text-slate-400 dark:group-hover:bg-slate-100 dark:group-hover:text-slate-900 transition-colors">
+                                          View
+                                        </button>
+                                      </td>
+                                    </tr>
+                                    
+                                    {/* Child Rows */}
+                                    {hasChildren && isExpanded && children.map(child => (
+                                      <tr 
+                                        key={child.id}
+                                        onClick={() => handleViewInvoice(child)}
+                                        className="bg-slate-50/30 hover:bg-slate-50/60 dark:bg-slate-900/20 dark:hover:bg-slate-800/30 cursor-pointer transition-colors group text-sm border-l-2 border-emerald-500/30 dark:border-emerald-500/20"
+                                      >
+                                        <td className="px-6 py-3 font-semibold text-slate-700 dark:text-slate-350 pl-10 flex items-center gap-1.5">
+                                          <span className="text-slate-300 dark:text-slate-600">┗</span>
+                                          {child.storeName}
+                                        </td>
+                                        <td className="px-6 py-3 font-mono text-xs text-slate-500 dark:text-slate-500">{child.invoiceNumber || '-'}</td>
+                                        <td className="px-6 py-3 text-slate-500 dark:text-slate-400">{child.date}</td>
+                                        <td className="px-6 py-3">
+                                          {child.type === 'CREDIT_INVOICE' ? (
+                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-bold rounded-full bg-blue-50/60 text-blue-600 border border-blue-100/60 dark:bg-blue-950/20 dark:text-blue-450 dark:border-blue-900/30">
+                                              <CreditCard size={11} /> Credit
+                                            </span>
+                                          ) : (
+                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-50/60 text-emerald-600 border border-emerald-100/60 dark:bg-emerald-950/20 dark:text-emerald-450 dark:border-emerald-900/30">
+                                              <Receipt size={11} /> Invoice
+                                            </span>
+                                          )}
+                                        </td>
+                                        <td className={`px-6 py-3 text-right font-semibold ${child.type === 'CREDIT_INVOICE' ? 'text-blue-500 dark:text-blue-450' : 'text-slate-700 dark:text-slate-300'}`}>
+                                          {child.type === 'CREDIT_INVOICE' ? '-' : ''}{child.currency}{child.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        </td>
+                                        <td className="px-6 py-3 text-center">
+                                          <button className="px-2 py-0.5 text-xs rounded bg-slate-50 text-slate-450 group-hover:bg-slate-200 group-hover:text-slate-700 dark:bg-slate-800 dark:text-slate-500 dark:group-hover:bg-slate-700 dark:group-hover:text-slate-300 transition-colors">
+                                            View
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </React.Fragment>
+                                );
+                              })
                             )}
                           </tbody>
                         </table>

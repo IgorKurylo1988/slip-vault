@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import time
 
 logger = logging.getLogger("db")
 
@@ -21,7 +22,7 @@ def get_firestore_client():
 def init_db():
     logger.info("Database provider: FIRESTORE (Collections are initialized dynamically)")
 
-def create_pending_invoice(invoice_id: str, scanned_image_url: str):
+def create_pending_invoice(invoice_id: str, scanned_image_url: str, user_id: str = "default"):
     """Inserts a placeholder invoice row with status 'PROCESSING'"""
     try:
         client = get_firestore_client()
@@ -29,7 +30,8 @@ def create_pending_invoice(invoice_id: str, scanned_image_url: str):
         doc_ref.set({
             "id": invoice_id,
             "scannedImage": scanned_image_url,
-            "status": "PROCESSING"
+            "status": "PROCESSING",
+            "userId": user_id
         })
     except Exception as e:
         logger.error(f"Firestore create_pending_invoice failed: {e}")
@@ -47,12 +49,15 @@ def get_invoice_by_id(invoice_id: str):
         logger.error(f"Firestore get_invoice_by_id failed: {e}")
         raise e
 
-def get_all_invoices():
-    """Returns only finalized (COMPLETED) invoices"""
+def get_all_invoices(user_id: str):
+    """Returns only finalized (COMPLETED) invoices for a specific user"""
     try:
         from google.cloud.firestore_v1.base_query import FieldFilter
         client = get_firestore_client()
-        docs = client.collection("invoices").where(filter=FieldFilter("status", "==", "COMPLETED")).stream()
+        docs = client.collection("invoices")\
+            .where(filter=FieldFilter("userId", "==", user_id))\
+            .where(filter=FieldFilter("status", "==", "COMPLETED"))\
+            .stream()
         results = [doc.to_dict() for doc in docs]
         # Sort locally to avoid custom index generation overhead on GCP
         results.sort(key=lambda x: x.get("createdAt", 0), reverse=True)
@@ -112,4 +117,34 @@ def update_invoice_error(invoice_id: str, rejection_reason: str):
         }, merge=True)
     except Exception as e:
         logger.error(f"Firestore update_invoice_error failed: {e}")
+        raise e
+
+# =====================================================================
+# User Authentication Helpers
+# =====================================================================
+def get_user_by_email(email: str):
+    try:
+        from google.cloud.firestore_v1.base_query import FieldFilter
+        client = get_firestore_client()
+        docs = client.collection("users").where(filter=FieldFilter("email", "==", email.lower().strip())).limit(1).stream()
+        for doc in docs:
+            return doc.to_dict()
+        return None
+    except Exception as e:
+        logger.error(f"Firestore get_user_by_email failed: {e}")
+        raise e
+
+def create_user(user_id: str, email: str, password_hash: str):
+    try:
+        client = get_firestore_client()
+        doc_ref = client.collection("users").document(user_id)
+        doc_ref.set({
+            "id": user_id,
+            "email": email.lower().strip(),
+            "passwordHash": password_hash,
+            "createdAt": int(time.time() * 1000)
+        })
+        return user_id
+    except Exception as e:
+        logger.error(f"Firestore create_user failed: {e}")
         raise e
