@@ -113,7 +113,11 @@ async def login_user(req: UserAuthSchema):
 @app.get("/api/invoices", response_model=List[InvoiceDataSchema])
 async def get_invoices(current_user: str = Depends(get_current_user)):
     try:
-        return db.get_all_invoices(current_user)
+        invoices = db.get_all_invoices(current_user)
+        for inv in invoices:
+            if inv.get("scannedImage"):
+                inv["scannedImage"] = get_storage_provider().get_signed_url(inv["scannedImage"])
+        return invoices
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -188,7 +192,7 @@ async def process_invoice(req: ProcessInvoiceRequest, current_user: str = Depend
         return {
             "id": invoice_id,
             "status": "PROCESSING",
-            "scannedImage": storage_url
+            "scannedImage": get_storage_provider().get_signed_url(storage_url)
         }
 
     except Exception as e:

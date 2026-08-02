@@ -28,6 +28,13 @@ class CloudStorage(ABC):
         """
         pass
 
+    @abstractmethod
+    def get_signed_url(self, public_url: str) -> str:
+        """
+        Generates a secure signed URL for the GCS resource.
+        """
+        pass
+
 class Base64Storage(CloudStorage):
     """Fallback storage that returns raw base64 data URIs without uploading to the cloud"""
     def upload_image(self, base64_image: str, file_name: str, user_id: str = "default", timestamp_str: str = "temp", store_name: str = "pending") -> str:
@@ -43,6 +50,9 @@ class Base64Storage(CloudStorage):
 
     def rename_image(self, old_url: str, new_user_id: str, new_timestamp: str, new_store_name: str, file_name: str) -> str:
         return old_url
+
+    def get_signed_url(self, public_url: str) -> str:
+        return public_url
 
 class GCSStorage(CloudStorage):
     """Google Cloud Storage (GCS) Provider (supports local GCS emulators via STORAGE_EMULATOR_HOST)"""
@@ -167,6 +177,36 @@ class GCSStorage(CloudStorage):
         except Exception as e:
             logger.error(f"Failed to rename GCS blob: {str(e)}")
             return old_url
+
+    def get_signed_url(self, public_url: str) -> str:
+        if not public_url or not public_url.startswith("http"):
+            return public_url
+        bucket_name = os.getenv("GCP_GCS_BUCKET")
+        if not bucket_name:
+            return public_url
+        
+        search_str = f"storage.googleapis.com/{bucket_name}/"
+        if search_str in public_url:
+            blob_path = public_url.split(search_str)[1]
+        else:
+            return public_url
+            
+        try:
+            from google.cloud import storage
+            import datetime
+            client = storage.Client()
+            bucket = client.bucket(bucket_name)
+            blob = bucket.blob(blob_path)
+            signed_url = blob.generate_signed_url(
+                version="v4",
+                expiration=datetime.timedelta(hours=1),
+                method="GET"
+            )
+            return signed_url
+        except Exception as e:
+            logger.error(f"Failed to generate GCS signed URL: {e}")
+            return public_url
+
 
 def get_storage_provider() -> CloudStorage:
     """Factory function returning the configured storage driver"""

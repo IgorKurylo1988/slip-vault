@@ -23,3 +23,9 @@ variable "cloudflare_account_id" {
   type        = string
   description = "The Cloudflare Account ID."
 }
+
+variable "jwt_secret" {
+  type        = string
+  sensitive   = true
+  description = "The shared secret key used to sign and verify app JWT tokens."
+}

@@ -77,21 +77,9 @@ resource "google_project_iam_member" "processor_vertex_member" {
   member  = "serviceAccount:${google_service_account.processor_sa.email}"
 }
 
-# =====================================================================
-# 4. Cloudflare Image Proxy Service Account & Keys
-# =====================================================================
-resource "google_service_account" "image_proxy_sa" {
-  account_id   = "slip-vault-img-proxy-sa"
-  display_name = "Service Account for Cloudflare Image Proxy Worker"
-  depends_on   = [google_project_service.services]
-}
-
-resource "google_storage_bucket_iam_member" "image_proxy_storage_member" {
-  bucket = google_storage_bucket.receipts_bucket.name
-  role   = "roles/storage.objectViewer"
-  member = "serviceAccount:${google_service_account.image_proxy_sa.email}"
-}
-
-resource "google_service_account_key" "image_proxy_key" {
-  service_account_id = google_service_account.image_proxy_sa.name
+# Allow API Service Account to sign GCS Blobs locally
+resource "google_project_iam_member" "api_token_creator" {
+  project = var.project_id
+  role    = "roles/iam.serviceAccountTokenCreator"
+  member  = "serviceAccount:${google_service_account.api_sa.email}"
 }

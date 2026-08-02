@@ -23,10 +23,4 @@ output "notification_service_account_email" {
   value       = google_service_account.notification_sa.email
 }
 
-output "image_proxy_private_key" {
-  description = "Base64 encoded JSON private key for the image proxy service account"
-  value       = google_service_account_key.image_proxy_key.private_key
-  sensitive   = true
-}
-
 

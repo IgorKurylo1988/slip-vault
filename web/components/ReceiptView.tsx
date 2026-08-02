@@ -25,6 +25,7 @@ const ReceiptView: React.FC<ReceiptViewProps> = ({
   isDeleting = false
 }) => {
   const [showImage, setShowImage] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const [isSharingImage, setIsSharingImage] = useState(false);
   const receiptRef = useRef<HTMLDivElement>(null);
   const isCredit = data.type === 'CREDIT_INVOICE';
@@ -317,19 +318,22 @@ const ReceiptView: React.FC<ReceiptViewProps> = ({
              </button>
            </div>
            <div className="flex-1 flex items-center justify-center overflow-hidden bg-gray-900 rounded-lg border border-gray-800 relative">
-             <img 
-               src={
-                 data.scannedImage.startsWith('data:') 
-                   ? data.scannedImage 
-                   : data.scannedImage.startsWith('http')
-                     ? data.scannedImage.includes('storage.googleapis.com/slip-vault-receipts/')
-                       ? `https://assets.slip-vault.com/${data.scannedImage.split('storage.googleapis.com/slip-vault-receipts/')[1]}?token=${localStorage.getItem('token') || ''}`
-                       : `${data.scannedImage}?token=${localStorage.getItem('token') || ''}`
-                     : `data:image/jpeg;base64,${data.scannedImage}`
-               } 
-               alt="Processed Scan" 
-               className="max-w-full max-h-full object-contain"
-             />
+             {imageError ? (
+               <div className="flex flex-col items-center justify-center text-center max-w-xs p-6 bg-slate-950/40 rounded-2xl border border-slate-800">
+                 <span className="text-4xl mb-3">🔒</span>
+                 <h4 className="text-sm font-bold text-white mb-1">Image Link Expired</h4>
+                 <p className="text-[11px] text-slate-400 leading-normal">
+                   This secure receipt URL has expired or is unreachable. Close this window and refresh to generate a new link.
+                 </p>
+               </div>
+             ) : (
+               <img 
+                 src={data.scannedImage.startsWith('http') || data.scannedImage.startsWith('data:') ? data.scannedImage : `data:image/jpeg;base64,${data.scannedImage}`} 
+                 alt="Processed Scan" 
+                 className="max-w-full max-h-full object-contain"
+                 onError={() => setImageError(true)}
+               />
+             )}
            </div>
            <p className="text-center text-white/50 text-xs mt-4 mb-2">
              High-contrast B&W processing optimized for AI extraction.
