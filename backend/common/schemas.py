@@ -27,22 +27,5 @@ class InvoiceData(BaseModel):
     totalAmount: float = Field(description="Total amount of the receipt.")
     rejectionReason: Optional[str] = Field(default=None, description="Detailed explanation if document type is INVALID.")
 
-class InvoiceDataSchema(BaseModel):
-    # This class is used by the API service and DB (includes metadata fields and all fields are optional)
-    id: Optional[str] = None
-    createdAt: Optional[int] = None
-    storeName: Optional[str] = None
-    storeAddress: Optional[str] = None
-    date: Optional[str] = None
-    time: Optional[str] = None
-    invoiceNumber: Optional[str] = None
-    type: Optional[str] = None
-    currency: Optional[str] = None
-    items: List[InvoiceItem] = []
-    subtotal: Optional[float] = None
-    tax: Optional[float] = None
-    totalAmount: Optional[float] = None
-    confidenceScore: Optional[float] = None
-    scannedImage: Optional[str] = None
-    status: Optional[str] = None
-    rejectionReason: Optional[str] = None
+# UserAuthSchema removed. Use common.models.user.UserAuthSchema instead.
+

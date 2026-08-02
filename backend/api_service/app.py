@@ -17,12 +17,22 @@ from common import db
 from common.storage import get_storage_provider
 from common.messaging import get_messaging_provider
 from common.auth_utils import hash_password, verify_password, create_jwt_token, decode_jwt_token
+from common.schemas import ProcessInvoiceRequest
+from common.models.invoice import InvoiceModel
+from common.models.user import UserAuthSchema
+
+# Import repositories
+from common.repository.user import UserRepository
+from common.repository.invoice import InvoiceRepository
 
 # Load local environment variables (resolves to backend/.env if run from backend/)
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"))
 
-# Initialize Database
+# Initialize Database Client
 db.init_db()
+
+user_repo = UserRepository()
+invoice_repo = InvoiceRepository()
 
 app = FastAPI(title="Slip Vault API (Uploader/API Service)", version="1.0.0")
 origins = [
@@ -43,12 +53,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-from common.schemas import ProcessInvoiceRequest, InvoiceDataSchema
-
-class UserAuthSchema(BaseModel):
-    email: str
-    password: str
 
 async def get_current_user(authorization: Optional[str] = Header(None)) -> str:
     """Validates JWT token and extracts the userId (sub)"""
@@ -71,7 +75,7 @@ async def get_current_user(authorization: Optional[str] = Header(None)) -> str:
 # =====================================================================
 @app.post("/api/auth/register", status_code=status.HTTP_201_CREATED)
 async def register_user(req: UserAuthSchema):
-    existing = db.get_user_by_email(req.email)
+    existing = user_repo.get_by_email(req.email)
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -80,7 +84,7 @@ async def register_user(req: UserAuthSchema):
     
     pwd_hash = hash_password(req.password)
     user_id = f"user_{str(uuid.uuid4())[:8]}"
-    db.create_user(user_id, req.email, pwd_hash)
+    user_repo.create(user_id, req.email, pwd_hash)
     
     token = create_jwt_token(user_id, req.email)
     return {
@@ -92,7 +96,7 @@ async def register_user(req: UserAuthSchema):
 
 @app.post("/api/auth/login")
 async def login_user(req: UserAuthSchema):
-    user = db.get_user_by_email(req.email)
+    user = user_repo.get_by_email(req.email)
     if not user or not verify_password(req.password, user.get("passwordHash")):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -110,10 +114,10 @@ async def login_user(req: UserAuthSchema):
 # =====================================================================
 # Invoices Endpoints (Authenticated)
 # =====================================================================
-@app.get("/api/invoices", response_model=List[InvoiceDataSchema])
+@app.get("/api/invoices", response_model=List[InvoiceModel])
 async def get_invoices(current_user: str = Depends(get_current_user)):
     try:
-        invoices = db.get_all_invoices(current_user)
+        invoices = invoice_repo.get_all_completed(current_user)
         for inv in invoices:
             if inv.get("scannedImage"):
                 inv["scannedImage"] = get_storage_provider().get_signed_url(inv["scannedImage"])
@@ -124,12 +128,12 @@ async def get_invoices(current_user: str = Depends(get_current_user)):
             detail=f"Database error: {str(e)}"
         )
 
-@app.post("/api/invoices", response_model=InvoiceDataSchema)
-async def create_invoice(invoice: InvoiceDataSchema, current_user: str = Depends(get_current_user)):
+@app.post("/api/invoices", response_model=InvoiceModel)
+async def create_invoice(invoice: InvoiceModel, current_user: str = Depends(get_current_user)):
     try:
         invoice_dict = invoice.model_dump()
         invoice_dict["userId"] = current_user  # Enforce current user ownership
-        db.save_invoice(invoice_dict)
+        invoice_repo.save(invoice_dict)
         return invoice_dict
     except Exception as e:
         raise HTTPException(
@@ -140,13 +144,13 @@ async def create_invoice(invoice: InvoiceDataSchema, current_user: str = Depends
 @app.delete("/api/invoices/{invoice_id}")
 async def delete_invoice(invoice_id: str, current_user: str = Depends(get_current_user)):
     try:
-        inv = db.get_invoice_by_id(invoice_id)
+        inv = invoice_repo.get_by_id(invoice_id)
         if not inv or inv.get("userId") != current_user:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You do not have permission to delete this invoice."
             )
-        db.delete_invoice(invoice_id)
+        invoice_repo.delete(invoice_id)
         return {"status": "success", "message": f"Invoice {invoice_id} deleted."}
     except HTTPException as he:
         raise he
@@ -177,7 +181,7 @@ async def process_invoice(req: ProcessInvoiceRequest, current_user: str = Depend
         )
         
         # 3. Create placeholder record with status 'PROCESSING'
-        db.create_pending_invoice(invoice_id, storage_url, user_id)
+        invoice_repo.create_pending(invoice_id, storage_url, user_id)
         
         # 4. Dispatch processing task with multi-tenant meta parameters
         task_payload = {

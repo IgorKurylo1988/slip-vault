@@ -13,10 +13,13 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Import shared modules and drivers from common package
 from common import db, llm
 from common.messaging import get_messaging_provider
+from common.repository.invoice import InvoiceRepository
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("worker")
+
+invoice_repo = InvoiceRepository()
 
 # Load local environment variables
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"))
@@ -52,7 +55,7 @@ def run_agentic_task(invoice_id: str, gcs_url: str, user_id: str, timestamp_str:
     logger.info(f"Processing invoice task {invoice_id} for user {user_id} from URL: {gcs_url}")
     try:
         # Check if already processed/completed in DB
-        existing = db.get_invoice_by_id(invoice_id)
+        existing = invoice_repo.get_by_id(invoice_id)
         if existing and existing.get("status") == "COMPLETED":
             logger.info(f"Invoice {invoice_id} is already processed and COMPLETED. Sending callback directly.")
             send_callback(invoice_id, "COMPLETED", existing)
@@ -65,12 +68,12 @@ def run_agentic_task(invoice_id: str, gcs_url: str, user_id: str, timestamp_str:
         if metadata.get("type") == "INVALID":
             rejection = metadata.get("rejectionReason") or "This document is not a refundable receipt (Credit Note)."
             logger.warning(f"Invoice {invoice_id} is INVALID: {rejection}")
-            db.update_invoice_error(invoice_id, rejection)
+            invoice_repo.update_error(invoice_id, rejection)
             send_callback(invoice_id, "ERROR", {"error": rejection})
         elif not metadata.get("totalAmount") or metadata["totalAmount"] <= 0:
             rejection = "Could not find a valid total amount on this receipt."
             logger.warning(f"Invoice {invoice_id} total amount invalid: {metadata.get('totalAmount')}")
-            db.update_invoice_error(invoice_id, rejection)
+            invoice_repo.update_error(invoice_id, rejection)
             send_callback(invoice_id, "ERROR", {"error": rejection})
         else:
             # Clean/slugify storeName for file path (allows Hebrew & other Unicode characters, but safe from path traversal)
@@ -94,15 +97,15 @@ def run_agentic_task(invoice_id: str, gcs_url: str, user_id: str, timestamp_str:
 
             # Success: save extracted metadata to DB and mark status as COMPLETED
             logger.info(f"Invoice {invoice_id} successfully parsed and stored under clean path. Saving to DB.")
-            db.update_invoice_success(invoice_id, metadata)
-            row = db.get_invoice_by_id(invoice_id)
+            invoice_repo.update_success(invoice_id, metadata)
+            row = invoice_repo.get_by_id(invoice_id)
             send_callback(invoice_id, "COMPLETED", row or metadata)
 
     except Exception as ex:
         # Update status to ERROR in SQLite database
         error_msg = f"Processing error: {str(ex)}"
         logger.error(f"Error processing invoice {invoice_id}: {error_msg}")
-        db.update_invoice_error(invoice_id, error_msg)
+        invoice_repo.update_error(invoice_id, error_msg)
         send_callback(invoice_id, "ERROR", {"error": error_msg})
 
 @app.post("/api/process-task")
