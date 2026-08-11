@@ -32,20 +32,20 @@ const ReceiptView: React.FC<ReceiptViewProps> = ({
   
   // Theme logic based on the Icon colors
   const headerBgClass = isCredit 
-    ? 'bg-gradient-to-br from-blue-500 to-indigo-600' 
-    : 'bg-gradient-to-br from-emerald-400 to-teal-600';
+    ? 'bg-gradient-to-br from-[#4F46E5] to-[#2563EB]' 
+    : 'bg-gradient-to-br from-[#1D4ED8] to-[#4F46E5]';
     
   const iconBgClass = isCredit 
-    ? 'bg-blue-50 text-blue-600' 
-    : 'bg-emerald-50 text-emerald-600';
+    ? 'bg-indigo-50 text-[#4F46E5]' 
+    : 'bg-blue-50 text-[#1D4ED8]';
     
   const totalTextClass = isCredit 
-    ? 'text-blue-600' 
-    : 'text-emerald-600';
+    ? 'text-[#4F46E5]' 
+    : 'text-[#1D4ED8]';
     
   const badgeClass = isCredit
-    ? 'bg-blue-100 text-blue-700'
-    : 'bg-emerald-100 text-emerald-700';
+    ? 'bg-indigo-100 text-[#4F46E5]'
+    : 'bg-blue-100 text-[#1D4ED8]';
 
   const handleImageShare = async () => {
     if (!receiptRef.current) return;
@@ -230,30 +230,34 @@ const ReceiptView: React.FC<ReceiptViewProps> = ({
                   </table>
                 </div>
 
-                {/* Totals */}
-                <div className="mt-8 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
-                    {data.subtotal && (
-                      <div className="flex justify-between items-center">
-                          <span className="text-gray-500 dark:text-slate-400 text-sm">Subtotal</span>
-                          <span className="text-gray-900 dark:text-slate-200 font-medium">{data.currency}{data.subtotal.toFixed(2)}</span>
-                      </div>
-                    )}
-                    {data.tax && (
-                      <div className="flex justify-between items-center">
-                          <span className="text-gray-500 dark:text-slate-400 text-sm">VAT / Tax</span>
-                          <span className="text-gray-900 dark:text-slate-200 font-medium">{data.currency}{data.tax.toFixed(2)}</span>
-                      </div>
-                    )}
-                    
-                    <div className="flex justify-between items-center pt-4 border-t-2 border-dashed border-slate-200 dark:border-slate-850 mt-4">
-                        <span className="text-lg font-bold text-gray-900 dark:text-white">
-                          {isCredit ? 'Refund Amount' : 'Total'}
-                        </span>
-                        <span className={`text-3xl font-bold ${totalTextClass}`}>
-                          {data.currency}{Math.abs(data.totalAmount).toFixed(2)}
-                        </span>
-                    </div>
+            {/* Totals */}
+            <div className="mt-8 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                {data.subtotal && (
+                  <div className="flex justify-between items-center">
+                      <span className="text-slate-500 dark:text-slate-400 text-sm">Subtotal</span>
+                      <span className="text-[#172033] dark:text-slate-200 font-medium">
+                        <span className="text-[#F59E0B] font-extrabold mr-0.5">{data.currency}</span>{data.subtotal.toFixed(2)}
+                      </span>
+                  </div>
+                )}
+                {data.tax && (
+                  <div className="flex justify-between items-center">
+                      <span className="text-slate-500 dark:text-slate-400 text-sm">VAT / Tax</span>
+                      <span className="text-[#172033] dark:text-slate-200 font-medium">
+                        <span className="text-[#F59E0B] font-extrabold mr-0.5">{data.currency}</span>{data.tax.toFixed(2)}
+                      </span>
+                  </div>
+                )}
+                
+                <div className="flex justify-between items-center pt-4 border-t-2 border-dashed border-slate-200 dark:border-slate-800 mt-4">
+                    <span className="text-lg font-bold text-[#1D4ED8] dark:text-[#F8FAFC]">
+                      {isCredit ? 'Refund Amount' : 'Total'}
+                    </span>
+                    <span className={`text-3xl font-bold ${totalTextClass}`}>
+                      <span className="text-[#F59E0B] font-extrabold mr-0.5">{data.currency}</span>{Math.abs(data.totalAmount).toFixed(2)}
+                    </span>
                 </div>
+            </div>
             </div>
 
             {/* Barcode Section */}

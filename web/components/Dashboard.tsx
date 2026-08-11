@@ -61,20 +61,20 @@ const Dashboard: React.FC<DashboardProps> = ({
     <div className="w-full h-full bg-slate-50 flex flex-col md:max-w-none md:shadow-none relative dark:bg-slate-900">
       
       {/* Header Section */}
-      <div className="bg-white px-6 pt-8 pb-4 rounded-b-[2.5rem] shadow-sm z-10 flex flex-col shrink-0 dark:bg-slate-900 dark:border-b dark:border-slate-800">
+      <div className="bg-white px-6 pt-8 pb-4 rounded-b-[2.5rem] shadow-sm z-10 flex flex-col shrink-0 dark:bg-[#111827] dark:border-b dark:border-[#334155]">
          <div className="flex items-center justify-between w-full mb-6">
             <div className="flex items-center gap-3">
               <div className="scale-75 origin-left"><AppLogo /></div>
               <div className="flex flex-col">
-                <h1 className="text-xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight leading-none">Slip Vault</h1>
-                <p className="text-slate-400 text-[10px] uppercase font-bold tracking-widest mt-1 dark:text-slate-550">Digital Receipt Vault</p>
+                <h1 className="text-xl font-extrabold text-[#1D4ED8] dark:text-[#F8FAFC] tracking-tight leading-none">Slip Vault</h1>
+                <p className="text-[#64748B] text-[10px] uppercase font-bold tracking-widest mt-1 dark:text-[#94A3B8]">Digital Receipt Vault</p>
               </div>
             </div>
 
             {/* Mobile Account / Avatar Button */}
             <button 
               onClick={onOpenAccountModal}
-              className="p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center gap-2 hover:scale-105 transition-transform"
+              className="p-1.5 rounded-2xl bg-[#F1F5F9] dark:bg-[#1E293B] border border-[#DCE3EC] dark:border-[#334155] flex items-center gap-2 hover:scale-105 transition-transform"
               title="Account Details & Avatar"
             >
               <div className={`w-8 h-8 rounded-xl ${currentAvatar.bg} text-white flex items-center justify-center font-bold text-sm shadow-sm`}>
@@ -84,35 +84,39 @@ const Dashboard: React.FC<DashboardProps> = ({
          </div>
          
          {/* Mobile Metrics (Total Documents, Total Spends, Credit Balance) */}
-         <div className="grid grid-cols-3 gap-2 mb-4 md:hidden border-t border-slate-100 dark:border-slate-800 pt-4">
-            <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl flex flex-col">
-              <span className="text-[8px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider whitespace-nowrap">Documents</span>
-              <span className="text-sm font-black text-slate-800 dark:text-slate-200">{stats.count}</span>
+         <div className="grid grid-cols-3 gap-2 mb-4 md:hidden border-t border-[#DCE3EC] dark:border-[#334155] pt-4">
+            <div className="bg-[#F1F5F9] dark:bg-[#1E293B]/50 p-2.5 rounded-xl flex flex-col">
+              <span className="text-[8px] text-[#64748B] dark:text-[#94A3B8] font-bold uppercase tracking-wider whitespace-nowrap">Documents</span>
+              <span className="text-sm font-black text-[#172033] dark:text-[#F8FAFC]">{stats.count}</span>
             </div>
-            <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl flex flex-col">
-              <span className="text-[8px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider whitespace-nowrap">Total Spend</span>
-              <span className="text-sm font-black text-emerald-600 truncate">{stats.currency}{stats.totalSpend.toLocaleString(undefined, { minimumFractionDigits: 0 })}</span>
+            <div className="bg-[#F1F5F9] dark:bg-[#1E293B]/50 p-2.5 rounded-xl flex flex-col">
+              <span className="text-[8px] text-[#64748B] dark:text-[#94A3B8] font-bold uppercase tracking-wider whitespace-nowrap">Total Spend</span>
+              <span className="text-sm font-black text-[#1D4ED8] dark:text-[#2563EB] truncate">
+                <span className="text-[#F59E0B] font-extrabold mr-0.5">{stats.currency}</span>{stats.totalSpend.toLocaleString(undefined, { minimumFractionDigits: 0 })}
+              </span>
             </div>
-            <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl flex flex-col">
-              <span className="text-[8px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider whitespace-nowrap">Credit Bal</span>
-              <span className="text-sm font-black text-blue-600 truncate">{stats.currency}{stats.creditTotal.toLocaleString(undefined, { minimumFractionDigits: 0 })}</span>
+            <div className="bg-[#F1F5F9] dark:bg-[#1E293B]/50 p-2.5 rounded-xl flex flex-col">
+              <span className="text-[8px] text-[#64748B] dark:text-[#94A3B8] font-bold uppercase tracking-wider whitespace-nowrap">Credit Bal</span>
+              <span className="text-sm font-black text-[#4F46E5] truncate">
+                <span className="text-[#F59E0B] font-extrabold mr-0.5">{stats.currency}</span>{stats.creditTotal.toLocaleString(undefined, { minimumFractionDigits: 0 })}
+              </span>
             </div>
          </div>
 
          {/* Search Bar (Mobile only) */}
          <div className="relative mb-4 md:hidden">
-            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-[#64748B]" size={18} />
             <input 
                type="text"
                placeholder="Search store or invoice #..."
                value={searchQuery}
                onChange={(e) => setSearchQuery(e.target.value)}
-               className="w-full h-11 pl-10 pr-10 bg-slate-100 border-none rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 transition-all outline-none dark:bg-slate-800 dark:text-slate-100"
+               className="w-full h-11 pl-10 pr-10 bg-[#F1F5F9] border border-[#DCE3EC] dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:border-[#1D4ED8] focus:ring-1 focus:ring-[#1D4ED8] dark:focus:border-[#2563EB] dark:focus:ring-[#2563EB] transition-all outline-none dark:bg-[#1E293B] dark:text-[#CBD5E1]"
             />
             {searchQuery && (
               <button 
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#172033]"
               >
                 <X size={16} />
               </button>
@@ -140,7 +144,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 fullWidth 
                 variant="secondary"
                 icon={<Upload size={18} />}
-                className="h-11 w-full text-sm font-semibold dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white dark:border-slate-700"
+                className="h-11 w-full text-sm font-semibold dark:bg-[#1E293B] dark:hover:bg-[#334155]/50 dark:text-[#F8FAFC] dark:border-[#334155]"
               >
                 Upload
               </Button>
@@ -154,8 +158,8 @@ const Dashboard: React.FC<DashboardProps> = ({
             onClick={() => setFilter('ALL')}
             className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-bold transition-all whitespace-nowrap ${
               filter === 'ALL' 
-                ? 'bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900' 
-                : 'bg-white text-slate-500 border border-slate-100 shadow-sm dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700/50'
+                ? 'bg-[#172033] text-white dark:bg-[#F8FAFC] dark:text-[#070B14]' 
+                : 'bg-white text-[#64748B] border border-[#DCE3EC] shadow-sm dark:bg-[#1E293B] dark:text-[#94A3B8] dark:border-[#334155]'
             }`}
           >
             <List size={12} /> All
@@ -164,8 +168,8 @@ const Dashboard: React.FC<DashboardProps> = ({
             onClick={() => setFilter('INVOICE')}
             className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-bold transition-all whitespace-nowrap ${
               filter === 'INVOICE' 
-                ? 'bg-emerald-500 text-white' 
-                : 'bg-white text-slate-500 border border-slate-100 shadow-sm dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700/50'
+                ? 'bg-[#1D4ED8] dark:bg-[#2563EB] text-white' 
+                : 'bg-white text-[#64748B] border border-[#DCE3EC] shadow-sm dark:bg-[#1E293B] dark:text-[#94A3B8] dark:border-[#334155]'
             }`}
           >
             <Receipt size={12} /> Invoices
@@ -174,8 +178,8 @@ const Dashboard: React.FC<DashboardProps> = ({
             onClick={() => setFilter('CREDIT_INVOICE')}
             className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-bold transition-all whitespace-nowrap ${
               filter === 'CREDIT_INVOICE' 
-                ? 'bg-blue-500 text-white' 
-                : 'bg-white text-slate-500 border border-slate-100 shadow-sm dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700/50'
+                ? 'bg-[#4F46E5] text-white' 
+                : 'bg-white text-[#64748B] border border-[#DCE3EC] shadow-sm dark:bg-[#1E293B] dark:text-[#94A3B8] dark:border-[#334155]'
             }`}
           >
             <CreditCard size={12} /> Credits

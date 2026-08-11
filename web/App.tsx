@@ -347,7 +347,7 @@ const App: React.FC = () => {
       {/* Central Invoice Document */}
       <div className="relative z-10 transform -rotate-6 bg-white p-1.5 rounded-lg shadow-lg w-12 h-14 flex flex-col gap-1 border-t border-white/50 border-b border-r border-slate-200">
         <div className="flex justify-between items-center mb-0.5">
-           <div className="w-3 h-1 bg-emerald-500 rounded-full"></div>
+           <div className="w-3 h-1 bg-[#1D4ED8] rounded-full"></div>
            <div className="w-2 h-1 bg-slate-200 rounded-full"></div>
         </div>
         <div className="space-y-1 flex-1">
@@ -368,16 +368,16 @@ const App: React.FC = () => {
 
   if (!token) {
     return (
-      <div className={`w-full min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-950 transition-colors duration-300`}>
-        <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 shadow-2xl border border-slate-100 dark:border-slate-800 animate-in fade-in duration-300">
+      <div className="dark w-full min-h-screen flex items-center justify-center p-4 bg-[#070B14] text-[#F8FAFC] transition-colors duration-300">
+        <div className="w-full max-w-md bg-[#111827] rounded-[2.5rem] p-8 shadow-2xl border border-[#334155] animate-in fade-in duration-300">
           <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 rounded-[1.25rem] bg-gradient-to-tr from-emerald-500 to-green-400 shadow-[0_8px_24px_rgba(16,185,129,0.3)] flex items-center justify-center mb-4">
+            <div className="w-16 h-16 rounded-[1.25rem] bg-gradient-to-tr from-[#1D4ED8] to-[#4F46E5] shadow-[0_8px_24px_rgba(29,78,216,0.3)] flex items-center justify-center mb-4">
               <Receipt className="text-white w-8 h-8" />
             </div>
-            <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100">
+            <h2 className="text-2xl font-black text-[#F8FAFC]">
               {isRegistering ? "Join Slip Vault" : "Welcome Back"}
             </h2>
-            <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
+            <p className="text-sm text-[#94A3B8] mt-1">
               {isRegistering ? "Create digitized credit account" : "Manage your digitized credit receipts"}
             </p>
           </div>
@@ -387,31 +387,31 @@ const App: React.FC = () => {
               <>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1.5 ml-1">First Name</label>
+                    <label className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider block mb-1.5 ml-1">First Name</label>
                     <input 
                       type="text" 
                       value={authFirstName}
                       onChange={(e) => setAuthFirstName(e.target.value)}
                       placeholder="John"
-                      className="w-full h-12 px-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500 text-sm transition-colors"
+                      className="w-full h-12 px-4 rounded-xl border border-[#334155] bg-[#1E293B] text-[#CBD5E1] focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] text-sm transition-colors"
                       required
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1.5 ml-1">Last Name</label>
+                    <label className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider block mb-1.5 ml-1">Last Name</label>
                     <input 
                       type="text" 
                       value={authLastName}
                       onChange={(e) => setAuthLastName(e.target.value)}
                       placeholder="Doe"
-                      className="w-full h-12 px-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500 text-sm transition-colors"
+                      className="w-full h-12 px-4 rounded-xl border border-[#334155] bg-[#1E293B] text-[#CBD5E1] focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] text-sm transition-colors"
                       required
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1.5 ml-1">Select Avatar (9 Options)</label>
+                  <label className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider block mb-1.5 ml-1">Select Avatar (9 Options)</label>
                   <div className="grid grid-cols-5 gap-2">
                     {AVATAR_OPTIONS.map((opt) => (
                       <button
@@ -419,7 +419,7 @@ const App: React.FC = () => {
                         key={opt.id}
                         onClick={() => handleSelectAvatar(opt.id)}
                         className={`h-10 rounded-xl ${opt.bg} text-white text-lg flex items-center justify-center transition-all ${
-                          userAvatar === opt.id ? 'ring-2 ring-emerald-500 scale-105 shadow-md' : 'opacity-70 hover:opacity-100'
+                          userAvatar === opt.id ? 'ring-2 ring-[#2563EB] scale-105 shadow-md' : 'opacity-70 hover:opacity-100'
                         }`}
                       >
                         {opt.emoji}
@@ -431,24 +431,24 @@ const App: React.FC = () => {
             )}
 
             <div>
-              <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1.5 ml-1">Email Address</label>
+              <label className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider block mb-1.5 ml-1">Email Address</label>
               <input 
                 type="email" 
                 value={authEmail}
                 onChange={(e) => setAuthEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full h-12 px-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-sm transition-colors"
+                className="w-full h-12 px-4 rounded-xl border border-[#334155] bg-[#1E293B] text-[#CBD5E1] focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] text-sm transition-colors"
                 required
               />
             </div>
             <div>
-              <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1.5 ml-1">Password</label>
+              <label className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider block mb-1.5 ml-1">Password</label>
               <input 
                 type="password" 
                 value={authPassword}
                 onChange={(e) => setAuthPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full h-12 px-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-sm transition-colors"
+                className="w-full h-12 px-4 rounded-xl border border-[#334155] bg-[#1E293B] text-[#CBD5E1] focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] text-sm transition-colors"
                 required
               />
             </div>
@@ -456,7 +456,7 @@ const App: React.FC = () => {
             <Button 
               type="submit" 
               variant="primary" 
-              className="w-full h-12 mt-2 shadow-emerald-200/50" 
+              className="w-full h-12 mt-2 shadow-blue-500/25" 
               disabled={authLoading}
               icon={authLoading ? <Loader2 className="animate-spin" /> : undefined}
             >
@@ -464,7 +464,7 @@ const App: React.FC = () => {
             </Button>
           </form>
           
-          <div className="text-center mt-6 pt-4 border-t border-slate-100 dark:border-slate-800/60">
+          <div className="text-center mt-6 pt-4 border-t border-[#334155]">
             <button 
               onClick={() => {
                 setIsRegistering(!isRegistering);
@@ -473,7 +473,7 @@ const App: React.FC = () => {
                 setAuthFirstName("");
                 setAuthLastName("");
               }}
-              className="text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 transition-colors uppercase tracking-wider"
+              className="text-xs font-bold text-[#2563EB] hover:text-[#4F46E5] transition-colors uppercase tracking-wider"
             >
               {isRegistering ? "Already have an account? Log In" : "New to Slip Vault? Create Account"}
             </button>
