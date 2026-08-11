@@ -350,7 +350,7 @@ const App: React.FC = () => {
               {isRegistering ? "Join Slip Vault" : "Welcome Back"}
             </h2>
             <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
-              {isRegistering ? "Create your secure multi-tenant account" : "Manage your digitized credit receipts"}
+              {isRegistering ? "Create digitized credit account" : "Manage your digitized credit receipts"}
             </p>
           </div>
           
