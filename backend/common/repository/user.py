@@ -22,14 +22,17 @@ class UserRepository:
             logger.error(f"Failed to get user by email: {e}")
             raise e
 
-    def create(self, user_id: str, email: str, password_hash: str) -> str:
+    def create(self, user_id: str, email: str, password_hash: str, first_name: str = "", last_name: str = "", avatar: str = "") -> str:
         try:
             doc_ref = self.collection.document(user_id)
             user_data = UserModel(
                 id=user_id,
                 email=email.lower().strip(),
                 passwordHash=password_hash,
-                createdAt=int(time.time() * 1000)
+                createdAt=int(time.time() * 1000),
+                firstName=first_name,
+                lastName=last_name,
+                avatar=avatar
             )
             doc_ref.set(user_data.model_dump())
             return user_id

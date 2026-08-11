@@ -74,7 +74,7 @@ async def get_current_user(authorization: Optional[str] = Header(None)) -> str:
 # Auth Endpoints
 # =====================================================================
 @app.post("/api/auth/register", status_code=status.HTTP_201_CREATED)
-async def register_user(req: UserAuthSchema):
+async def register_user(req: UserRegisterSchema):
     existing = user_repo.get_by_email(req.email)
     if existing:
         raise HTTPException(
@@ -84,13 +84,23 @@ async def register_user(req: UserAuthSchema):
     
     pwd_hash = hash_password(req.password)
     user_id = str(uuid.uuid4())[:8]
-    user_repo.create(user_id, req.email, pwd_hash)
+    user_repo.create(
+        user_id=user_id,
+        email=req.email,
+        password_hash=pwd_hash,
+        first_name=req.firstName or "",
+        last_name=req.lastName or "",
+        avatar=req.avatar or ""
+    )
     
     token = create_jwt_token(user_id, req.email)
     return {
         "status": "success",
         "userId": user_id,
         "email": req.email,
+        "firstName": req.firstName or "",
+        "lastName": req.lastName or "",
+        "avatar": req.avatar or "",
         "token": token
     }
 
@@ -108,6 +118,9 @@ async def login_user(req: UserAuthSchema):
         "status": "success",
         "userId": user["id"],
         "email": user["email"],
+        "firstName": user.get("firstName", ""),
+        "lastName": user.get("lastName", ""),
+        "avatar": user.get("avatar", ""),
         "token": token
     }
 

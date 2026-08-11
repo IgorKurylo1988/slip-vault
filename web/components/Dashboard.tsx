@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
-import { InvoiceData } from '../types';
+import { InvoiceData, AVATAR_OPTIONS } from '../types';
 import InvoiceListItem from './InvoiceListItem';
 import Button from './Button';
-import { Scan, Upload, CreditCard, Receipt, List, Search as SearchIcon, X, Sun, Moon } from 'lucide-react';
+import { Scan, Upload, CreditCard, Receipt, List, Search as SearchIcon, X, User } from 'lucide-react';
 
 type FilterType = 'ALL' | 'INVOICE' | 'CREDIT_INVOICE';
 
@@ -18,8 +18,8 @@ interface DashboardProps {
   setFilter: (filter: FilterType) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
-  theme: 'light' | 'dark';
-  toggleTheme: () => void;
+  userAvatar: string;
+  onOpenAccountModal: () => void;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ 
@@ -34,8 +34,8 @@ const Dashboard: React.FC<DashboardProps> = ({
   setFilter,
   searchQuery,
   setSearchQuery,
-  theme,
-  toggleTheme
+  userAvatar,
+  onOpenAccountModal
 }) => {
   const stats = useMemo(() => {
     const credits = invoices.filter(i => i.type === 'CREDIT_INVOICE');
@@ -45,6 +45,8 @@ const Dashboard: React.FC<DashboardProps> = ({
     const currency = invoices[0]?.currency || '₪';
     return { count: invoices.length, creditCount: credits.length, creditTotal: totalCredits, totalSpend, currency };
   }, [invoices]);
+
+  const currentAvatar = AVATAR_OPTIONS.find(a => a.id === userAvatar) || AVATAR_OPTIONS[0];
 
   const filteredInvoices = useMemo(() => {
     return invoices.filter(inv => {
@@ -62,19 +64,23 @@ const Dashboard: React.FC<DashboardProps> = ({
       <div className="bg-white px-6 pt-8 pb-4 rounded-b-[2.5rem] shadow-sm z-10 flex flex-col shrink-0 dark:bg-slate-900 dark:border-b dark:border-slate-800">
          <div className="flex items-center justify-between w-full mb-6">
             <div className="flex items-center gap-3">
-              <button 
-                onClick={toggleTheme}
-                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 transition-colors"
-                title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-              >
-                {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-              </button>
               <div className="scale-75 origin-left"><AppLogo /></div>
               <div className="flex flex-col">
                 <h1 className="text-xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight leading-none">Slip Vault</h1>
                 <p className="text-slate-400 text-[10px] uppercase font-bold tracking-widest mt-1 dark:text-slate-550">Digital Receipt Vault</p>
               </div>
             </div>
+
+            {/* Mobile Account / Avatar Button */}
+            <button 
+              onClick={onOpenAccountModal}
+              className="p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center gap-2 hover:scale-105 transition-transform"
+              title="Account Details & Avatar"
+            >
+              <div className={`w-8 h-8 rounded-xl ${currentAvatar.bg} text-white flex items-center justify-center font-bold text-sm shadow-sm`}>
+                {currentAvatar.emoji}
+              </div>
+            </button>
          </div>
          
          {/* Mobile Metrics (Total Documents, Total Spends, Credit Balance) */}

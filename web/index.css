@@ -3,32 +3,60 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-slate-50: #f8fafc;
-  --color-slate-100: #f1f5f9;
-  --color-slate-200: #e2e8f0;
-  --color-slate-300: #cbd5e1;
-  --color-slate-400: #94a3b8;
-  --color-slate-500: #64748b;
+  /* Page Backgrounds */
+  --color-page-light: #F8FAFC;
+  --color-page-dark: #070B14;
+  --color-bg-glow: #0D1B3D;
+
+  /* Card Backgrounds */
+  --color-card-light: #FFFFFF;
+  --color-card-dark: #111827;
+
+  /* Headings & Text */
+  --color-heading-light: #172033;
+  --color-heading-dark: #F8FAFC;
+  --color-subtext-light: #64748B;
+  --color-subtext-dark: #94A3B8;
+
+  /* Inputs */
+  --color-input-bg-light: #F1F5F9;
+  --color-input-bg-dark: #1E293B;
+  --color-input-border-light: #DCE3EC;
+  --color-input-border-dark: #334155;
+  --color-input-text-light: #475569;
+  --color-input-text-dark: #CBD5E1;
+
+  /* Brand Colors */
+  --color-brand-primary-light: #1D4ED8;
+  --color-brand-primary-dark: #2563EB;
+  --color-brand-gradient-end: #4F46E5;
+  --color-brand-amber: #F59E0B;
+
+  /* Overrides for standard Slate palette to match exact hex specs */
+  --color-slate-50: #F8FAFC;
+  --color-slate-100: #F1F5F9;
+  --color-slate-200: #DCE3EC;
+  --color-slate-300: #CBD5E1;
+  --color-slate-400: #94A3B8;
+  --color-slate-500: #64748B;
   --color-slate-600: #475569;
   --color-slate-700: #334155;
-  --color-slate-800: #1e293b;
-  --color-slate-900: #0f172a;
-  --color-slate-950: #020617;
+  --color-slate-800: #1E293B;
+  --color-slate-900: #111827;
+  --color-slate-950: #070B14;
   
-  --color-emerald-50: #ecfdf5;
-  --color-emerald-100: #d1fae5;
-  --color-emerald-400: #34d399;
-  --color-emerald-500: #10b981;
-  --color-emerald-600: #059669;
-  --color-emerald-700: #047857;
-  
-  --color-blue-50: #eff6ff;
-  --color-blue-100: #dbeafe;
-  --color-blue-500: #3b82f6;
-  --color-blue-600: #2563eb;
-  --color-blue-700: #1d4ed8;
+  --color-blue-600: #2563EB;
+  --color-blue-700: #1D4ED8;
+  --color-indigo-600: #4F46E5;
+  --color-amber-500: #F59E0B;
+}
 
-  --color-red-500: #ef4444;
-  --color-red-600: #dc2626;
-  --color-red-700: #b91c1c;
+body {
+  background-color: #F8FAFC;
+  color: #172033;
+}
+
+html.dark body {
+  background-color: #070B14;
+  color: #F8FAFC;
 }

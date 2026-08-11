@@ -17,9 +17,9 @@ const Button: React.FC<ButtonProps> = ({
   const baseStyles = "flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-medium transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none";
   
   const variants = {
-    primary: "bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg shadow-emerald-200/50 hover:from-emerald-600 hover:to-blue-600 border border-transparent dark:shadow-none",
-    secondary: "bg-white text-slate-700 shadow-sm border border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700/50",
-    outline: "border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20",
+    primary: "bg-gradient-to-r from-[#1D4ED8] to-[#4F46E5] dark:from-[#2563EB] dark:to-[#4F46E5] text-white shadow-lg shadow-blue-500/25 hover:opacity-95 border border-transparent active:scale-[0.98]",
+    secondary: "bg-[#FFFFFF] dark:bg-[#1E293B] text-[#172033] dark:text-[#CBD5E1] border border-[#DCE3EC] dark:border-[#334155] hover:bg-[#F1F5F9] dark:hover:bg-[#334155]/50 shadow-sm",
+    outline: "border-2 border-[#1D4ED8] dark:border-[#2563EB] text-[#1D4ED8] dark:text-[#2563EB] hover:bg-[#1D4ED8]/10 dark:hover:bg-[#2563EB]/10",
     danger: "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/50 dark:hover:bg-red-900/20"
   };
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { AppState, InvoiceData } from './types';
+import { AppState, InvoiceData, AVATAR_OPTIONS } from './types';
 import { processInvoiceImage } from './services/invoiceService';
 import { fetchInvoices, saveInvoiceToStorage, deleteInvoiceFromStorage } from './services/storageService';
 import { requestNotificationPermission, pollInvoiceStatus } from './services/notificationService';
@@ -7,7 +7,7 @@ import CameraCapture from './components/CameraCapture';
 import ReceiptView from './components/ReceiptView';
 import Dashboard from './components/Dashboard';
 import Button from './components/Button';
-import { Loader2, Search, X, CreditCard, Receipt, FileText, Eye, Sun, Moon } from 'lucide-react';
+import { Loader2, Search, X, CreditCard, Receipt, FileText, Eye, Sun, Moon, User } from 'lucide-react';
 
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>(AppState.IDLE);
@@ -33,12 +33,20 @@ const App: React.FC = () => {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'));
   const [userId, setUserId] = useState<string>(() => localStorage.getItem('userId') || "");
   const [userEmail, setUserEmail] = useState<string>(() => localStorage.getItem('userEmail') || "");
+  const [userFirstName, setUserFirstName] = useState<string>(() => localStorage.getItem('userFirstName') || "");
+  const [userLastName, setUserLastName] = useState<string>(() => localStorage.getItem('userLastName') || "");
+  const [userAvatar, setUserAvatar] = useState<string>(() => localStorage.getItem('userAvatar') || "1");
 
   // Authentication UI state
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
+  const [authFirstName, setAuthFirstName] = useState("");
+  const [authLastName, setAuthLastName] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
+
+  // Account & Avatar modal state
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -51,6 +59,11 @@ const App: React.FC = () => {
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
+
+  const handleSelectAvatar = (avatarId: string) => {
+    setUserAvatar(avatarId);
+    localStorage.setItem('userAvatar', avatarId);
   };
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -69,11 +82,15 @@ const App: React.FC = () => {
     const baseUrl = isLocal ? 'http://localhost:8000' : 'https://api.slip-vault.com';
     const endpoint = isRegistering ? '/api/auth/register' : '/api/auth/login';
     
+    const payload = isRegistering 
+      ? { email: authEmail, password: authPassword, firstName: authFirstName, lastName: authLastName, avatar: userAvatar }
+      : { email: authEmail, password: authPassword };
+
     try {
       const response = await fetch(`${baseUrl}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: authEmail, password: authPassword }),
+        body: JSON.stringify(payload),
       });
       
       const resData = await response.json();
@@ -84,12 +101,21 @@ const App: React.FC = () => {
       localStorage.setItem('token', resData.token);
       localStorage.setItem('userId', resData.userId);
       localStorage.setItem('userEmail', resData.email);
+      localStorage.setItem('userFirstName', resData.firstName || authFirstName || "");
+      localStorage.setItem('userLastName', resData.lastName || authLastName || "");
+      localStorage.setItem('userAvatar', resData.avatar || userAvatar || "1");
       
       setToken(resData.token);
       setUserId(resData.userId);
       setUserEmail(resData.email);
-      setAuthPassword(""); // clear password
+      setUserFirstName(resData.firstName || authFirstName || "");
+      setUserLastName(resData.lastName || authLastName || "");
+      setUserAvatar(resData.avatar || userAvatar || "1");
+
+      setAuthPassword("");
       setAuthEmail("");
+      setAuthFirstName("");
+      setAuthLastName("");
     } catch (err) {
       setDialogMessage({
         title: isRegistering ? "Registration Failed" : "Login Failed",
@@ -105,10 +131,17 @@ const App: React.FC = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('userId');
     localStorage.removeItem('userEmail');
+    localStorage.removeItem('userFirstName');
+    localStorage.removeItem('userLastName');
+    localStorage.removeItem('userAvatar');
     setToken(null);
     setUserId("");
     setUserEmail("");
+    setUserFirstName("");
+    setUserLastName("");
+    setUserAvatar("1");
     setInvoices([]);
+    setIsAccountModalOpen(false);
   };
   
   // Loading states
@@ -331,16 +364,11 @@ const App: React.FC = () => {
     </div>
   );
 
+  const currentAvatar = AVATAR_OPTIONS.find(a => a.id === userAvatar) || AVATAR_OPTIONS[0];
+
   if (!token) {
     return (
       <div className={`w-full min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-950 transition-colors duration-300`}>
-        {/* Theme toggle in login */}
-        <div className="absolute top-4 right-4">
-          <button onClick={toggleTheme} className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 shadow-sm hover:scale-105 transition-transform">
-            {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
-          </button>
-        </div>
-        
         <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 shadow-2xl border border-slate-100 dark:border-slate-800 animate-in fade-in duration-300">
           <div className="flex flex-col items-center mb-8">
             <div className="w-16 h-16 rounded-[1.25rem] bg-gradient-to-tr from-emerald-500 to-green-400 shadow-[0_8px_24px_rgba(16,185,129,0.3)] flex items-center justify-center mb-4">
@@ -355,6 +383,53 @@ const App: React.FC = () => {
           </div>
           
           <form onSubmit={handleAuth} className="space-y-4">
+            {isRegistering && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1.5 ml-1">First Name</label>
+                    <input 
+                      type="text" 
+                      value={authFirstName}
+                      onChange={(e) => setAuthFirstName(e.target.value)}
+                      placeholder="John"
+                      className="w-full h-12 px-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500 text-sm transition-colors"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1.5 ml-1">Last Name</label>
+                    <input 
+                      type="text" 
+                      value={authLastName}
+                      onChange={(e) => setAuthLastName(e.target.value)}
+                      placeholder="Doe"
+                      className="w-full h-12 px-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500 text-sm transition-colors"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1.5 ml-1">Select Avatar (9 Options)</label>
+                  <div className="grid grid-cols-5 gap-2">
+                    {AVATAR_OPTIONS.map((opt) => (
+                      <button
+                        type="button"
+                        key={opt.id}
+                        onClick={() => handleSelectAvatar(opt.id)}
+                        className={`h-10 rounded-xl ${opt.bg} text-white text-lg flex items-center justify-center transition-all ${
+                          userAvatar === opt.id ? 'ring-2 ring-emerald-500 scale-105 shadow-md' : 'opacity-70 hover:opacity-100'
+                        }`}
+                      >
+                        {opt.emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
             <div>
               <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1.5 ml-1">Email Address</label>
               <input 
@@ -395,6 +470,8 @@ const App: React.FC = () => {
                 setIsRegistering(!isRegistering);
                 setAuthEmail("");
                 setAuthPassword("");
+                setAuthFirstName("");
+                setAuthLastName("");
               }}
               className="text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 transition-colors uppercase tracking-wider"
             >
@@ -441,42 +518,36 @@ const App: React.FC = () => {
                 setFilter={setFilter}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
-                theme={theme}
-                toggleTheme={toggleTheme}
+                userAvatar={userAvatar}
+                onOpenAccountModal={() => setIsAccountModalOpen(true)}
               />
             </div>
             {/* User Profile / Logout Bar at bottom of sidebar */}
             <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
-              <div className="flex flex-col truncate max-w-[150px]">
+              <div className="flex flex-col truncate max-w-[200px]">
                 <span className="text-[9px] text-slate-400 dark:text-slate-500 uppercase font-black tracking-wider">Logged In As</span>
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">{userEmail}</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">
+                  {userFirstName || userLastName ? `${userFirstName} ${userLastName}` : userEmail}
+                </span>
               </div>
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={toggleTheme}
-                  className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 transition-colors"
-                  title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-                >
-                  {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-                </button>
-                <button 
-                  onClick={handleLogout}
-                  className="px-2.5 py-1 text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-900/30 rounded-lg transition-colors uppercase tracking-wider"
-                >
-                  Logout
-                </button>
-              </div>
+              <button 
+                onClick={handleLogout}
+                className="px-2.5 py-1 text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-900/30 rounded-lg transition-colors uppercase tracking-wider"
+              >
+                Logout
+              </button>
             </div>
           </div>
 
           {/* Right/Center Panel: Search Invoice and Receipt Table or Dashboard Metrics */}
           <div className="h-full flex-1 bg-slate-50 flex flex-col overflow-hidden dark:bg-slate-950">
             {/* Desktop Only Center Search Header */}
-            <div className="hidden md:block w-full bg-white border-b border-slate-200 py-5 px-8 shadow-sm shrink-0 dark:bg-slate-900 dark:border-slate-800">
+            <div className="hidden md:block w-full bg-white border-b border-slate-200 py-4 px-8 shadow-sm shrink-0 dark:bg-slate-900 dark:border-slate-800">
                <div className="max-w-4xl mx-auto flex items-center justify-between">
                  <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Workspace Dashboard</h2>
-                 <div className="flex items-center gap-3 w-full max-w-md">
-                   <div className="relative flex-1 shadow-sm">
+                 
+                 <div className="flex items-center gap-4">
+                   <div className="relative w-64 shadow-sm">
                       <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                       <input 
                          type="text"
@@ -494,6 +565,24 @@ const App: React.FC = () => {
                         </button>
                       )}
                    </div>
+
+                   {/* Desktop User Profile Badge & Theme Button */}
+                   <button 
+                     onClick={() => setIsAccountModalOpen(true)}
+                     className="flex items-center gap-2.5 p-1.5 pr-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-emerald-500 transition-all"
+                     title="Account & Settings"
+                   >
+                     <div className={`w-8 h-8 rounded-lg ${currentAvatar.bg} text-white flex items-center justify-center font-bold text-sm shadow-sm`}>
+                       {currentAvatar.emoji}
+                     </div>
+                     <div className="flex flex-col text-left">
+                       <span className="text-xs font-bold text-slate-800 dark:text-slate-100 leading-tight truncate max-w-[120px]">
+                         {userFirstName || userLastName ? `${userFirstName} ${userLastName}`.trim() : userEmail.split('@')[0]}
+                       </span>
+                       <span className="text-[9px] text-slate-400 font-medium truncate max-w-[120px]">{userEmail}</span>
+                     </div>
+                   </button>
+
                    <button
                      onClick={toggleTheme}
                      className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 transition-colors shrink-0"
@@ -768,6 +857,76 @@ const App: React.FC = () => {
             >
               Okay
             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Account Details & Avatar Selection Modal */}
+      {isAccountModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-100 dark:border-slate-800 flex flex-col relative animate-in zoom-in-95 duration-200">
+            <button 
+              onClick={() => setIsAccountModalOpen(false)}
+              className="absolute top-4 right-4 p-2 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="flex items-center gap-4 mb-6 pt-2">
+              <div className={`w-16 h-16 rounded-2xl ${currentAvatar.bg} text-white flex items-center justify-center font-bold text-2xl shadow-md shrink-0`}>
+                {currentAvatar.emoji}
+              </div>
+              <div className="flex flex-col truncate">
+                <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 truncate">
+                  {userFirstName || userLastName ? `${userFirstName} ${userLastName}`.trim() : userEmail.split('@')[0]}
+                </h3>
+                <p className="text-xs text-slate-400 dark:text-slate-500 truncate">{userEmail}</p>
+                <span className="text-[10px] font-mono font-semibold text-emerald-600 dark:text-emerald-400 mt-1">ID: {userId}</span>
+              </div>
+            </div>
+
+            {/* Avatar Selector (9 Options) */}
+            <div className="mb-6">
+              <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">
+                Choose Avatar (9 Options)
+              </label>
+              <div className="grid grid-cols-5 gap-2.5">
+                {AVATAR_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    onClick={() => handleSelectAvatar(opt.id)}
+                    className={`h-12 rounded-xl ${opt.bg} text-white text-xl flex items-center justify-center transition-all ${
+                      userAvatar === opt.id ? 'ring-4 ring-emerald-500 scale-105 shadow-lg' : 'opacity-70 hover:opacity-100 hover:scale-100'
+                    }`}
+                    title={opt.label}
+                  >
+                    {opt.emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Single Theme Toggle */}
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 mb-6">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Appearance Mode</span>
+              <button
+                onClick={toggleTheme}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 shadow-sm"
+              >
+                {theme === 'dark' ? <Sun size={14} className="text-amber-400" /> : <Moon size={14} className="text-indigo-500" />}
+                {theme === 'dark' ? 'Dark' : 'Light'}
+              </button>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <Button onClick={() => setIsAccountModalOpen(false)} variant="secondary" className="flex-1">
+                Close
+              </Button>
+              <Button onClick={handleLogout} variant="primary" className="flex-1 bg-red-500 hover:bg-red-600">
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       )}
