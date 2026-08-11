@@ -126,7 +126,7 @@ async def process_task(request: Request):
         
         invoice_id = task_body.get("id")
         gcs_url = task_body.get("gcs_url")
-        user_id = task_body.get("userId", "default_user")
+        user_id = task_body.get("userId", "default")
         timestamp_str = task_body.get("timestamp_str", "temp")
         
         if not invoice_id or not gcs_url:
@@ -160,7 +160,7 @@ def poll_queue():
 
                 invoice_id = body.get("id")
                 gcs_url = body.get("gcs_url")
-                user_id = body.get("userId", "default_user")
+                user_id = body.get("userId", "default")
                 timestamp_str = body.get("timestamp_str", "temp")
 
                 if not invoice_id or not gcs_url:

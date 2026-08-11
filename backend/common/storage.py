@@ -193,16 +193,47 @@ class GCSStorage(CloudStorage):
             
         try:
             from google.cloud import storage
+            import google.auth
+            from google.auth.transport.requests import Request
             import datetime
-            client = storage.Client()
+
+            credentials, _ = google.auth.default()
+            client = storage.Client(credentials=credentials)
             bucket = client.bucket(bucket_name)
             blob = bucket.blob(blob_path)
-            signed_url = blob.generate_signed_url(
-                version="v4",
-                expiration=datetime.timedelta(hours=1),
-                method="GET"
-            )
-            return signed_url
+
+            try:
+                return blob.generate_signed_url(
+                    version="v4",
+                    expiration=datetime.timedelta(hours=1),
+                    method="GET"
+                )
+            except Exception as sign_err:
+                if "private key" in str(sign_err).lower():
+                    if not credentials.valid:
+                        credentials.refresh(Request())
+                    
+                    sa_email = getattr(credentials, "service_account_email", None)
+                    if not sa_email or sa_email == "default":
+                        try:
+                            import urllib.request
+                            req = urllib.request.Request(
+                                "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/email",
+                                headers={"Metadata-Flavor": "Google"}
+                            )
+                            sa_email = urllib.request.urlopen(req, timeout=2).read().decode("utf-8")
+                        except Exception:
+                            sa_email = os.getenv("GCP_SERVICE_ACCOUNT_EMAIL")
+
+                    if sa_email and credentials.token:
+                        return blob.generate_signed_url(
+                            version="v4",
+                            expiration=datetime.timedelta(hours=1),
+                            method="GET",
+                            service_account_email=sa_email,
+                            access_token=credentials.token
+                        )
+                raise sign_err
         except Exception as e:
             logger.error(f"Failed to generate GCS signed URL: {e}")
             return public_url

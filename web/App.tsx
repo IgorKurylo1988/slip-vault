@@ -447,16 +447,25 @@ const App: React.FC = () => {
             </div>
             {/* User Profile / Logout Bar at bottom of sidebar */}
             <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
-              <div className="flex flex-col truncate max-w-[180px]">
+              <div className="flex flex-col truncate max-w-[150px]">
                 <span className="text-[9px] text-slate-400 dark:text-slate-500 uppercase font-black tracking-wider">Logged In As</span>
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">{userEmail}</span>
               </div>
-              <button 
-                onClick={handleLogout}
-                className="px-2.5 py-1 text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-900/30 rounded-lg transition-colors uppercase tracking-wider"
-              >
-                Logout
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={toggleTheme}
+                  className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 transition-colors"
+                  title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                >
+                  {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+                </button>
+                <button 
+                  onClick={handleLogout}
+                  className="px-2.5 py-1 text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-900/30 rounded-lg transition-colors uppercase tracking-wider"
+                >
+                  Logout
+                </button>
+              </div>
             </div>
           </div>
 
@@ -466,23 +475,32 @@ const App: React.FC = () => {
             <div className="hidden md:block w-full bg-white border-b border-slate-200 py-5 px-8 shadow-sm shrink-0 dark:bg-slate-900 dark:border-slate-800">
                <div className="max-w-4xl mx-auto flex items-center justify-between">
                  <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Workspace Dashboard</h2>
-                 <div className="relative w-full max-w-md shadow-sm">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input 
-                       type="text"
-                       placeholder="Search stores, date, invoice #..."
-                       value={searchQuery}
-                       onChange={(e) => setSearchQuery(e.target.value)}
-                       className="w-full h-10 pl-11 pr-11 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 transition-all outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
-                    />
-                    {searchQuery && (
-                      <button 
-                        onClick={() => setSearchQuery('')}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-slate-500"
-                      >
-                        <X size={16} />
-                      </button>
-                    )}
+                 <div className="flex items-center gap-3 w-full max-w-md">
+                   <div className="relative flex-1 shadow-sm">
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                      <input 
+                         type="text"
+                         placeholder="Search stores, date, invoice #..."
+                         value={searchQuery}
+                         onChange={(e) => setSearchQuery(e.target.value)}
+                         className="w-full h-10 pl-11 pr-11 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 transition-all outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
+                      />
+                      {searchQuery && (
+                        <button 
+                          onClick={() => setSearchQuery('')}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-slate-500"
+                        >
+                          <X size={16} />
+                        </button>
+                      )}
+                   </div>
+                   <button
+                     onClick={toggleTheme}
+                     className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 transition-colors shrink-0"
+                     title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                   >
+                     {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                   </button>
                  </div>
                </div>
             </div>

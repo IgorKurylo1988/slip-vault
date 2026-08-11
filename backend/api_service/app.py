@@ -83,7 +83,7 @@ async def register_user(req: UserAuthSchema):
         )
     
     pwd_hash = hash_password(req.password)
-    user_id = f"user_{str(uuid.uuid4())[:8]}"
+    user_id = str(uuid.uuid4())[:8]
     user_repo.create(user_id, req.email, pwd_hash)
     
     token = create_jwt_token(user_id, req.email)
