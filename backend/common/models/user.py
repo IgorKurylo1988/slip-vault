@@ -8,7 +8,6 @@ class UserModel(BaseModel):
     createdAt: int
     firstName: Optional[str] = Field(default="")
     lastName: Optional[str] = Field(default="")
-    avatar: Optional[str] = Field(default="")
 
 class UserAuthSchema(BaseModel):
     email: str
@@ -19,4 +18,3 @@ class UserRegisterSchema(BaseModel):
     password: str
     firstName: Optional[str] = Field(default="")
     lastName: Optional[str] = Field(default="")
-    avatar: Optional[str] = Field(default="")

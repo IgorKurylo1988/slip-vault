@@ -18,11 +18,23 @@ def verify_password(password: str, hashed_password: str) -> bool:
     except Exception:
         return False
 
+def is_admin_email(email: str) -> bool:
+    """Checks if an email belongs to an administrator"""
+    if not email:
+        return False
+    e = email.lower().strip()
+    return e.endswith("@slip-vault.com") or "admin" in e
+
+def get_user_role(email: str) -> str:
+    """Returns 'ADMIN' or 'USER' based on email criteria"""
+    return "ADMIN" if is_admin_email(email) else "USER"
+
 def create_jwt_token(user_id: str, email: str) -> str:
-    """Generates a signed JWT containing user identity"""
+    """Generates a signed JWT containing user identity and role"""
     payload = {
         "sub": user_id,
         "email": email,
+        "role": get_user_role(email),
         "exp": datetime.datetime.utcnow() + datetime.timedelta(days=30),
         "iat": datetime.datetime.utcnow()
     }

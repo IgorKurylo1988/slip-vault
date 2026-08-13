@@ -74,6 +74,15 @@ class InvoiceRepository:
             logger.error(f"Failed to delete invoice {invoice_id}: {e}")
             raise e
 
+    def delete_all_for_user(self, user_id: str):
+        try:
+            docs = self.collection.where(filter=FieldFilter("userId", "==", user_id)).stream()
+            for doc in docs:
+                doc.reference.delete()
+        except Exception as e:
+            logger.error(f"Failed to delete all invoices for user {user_id}: {e}")
+            raise e
+
     def update_success(self, invoice_id: str, metadata: dict):
         try:
             created_at = metadata.get("createdAt") or int(time.time() * 1000)

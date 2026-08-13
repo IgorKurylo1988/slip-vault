@@ -1,17 +1,29 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { InvoiceData } from '../types';
 import Button from './Button';
-import { Search, Trash2, ShieldAlert, ArrowLeft, Loader2, CreditCard, Receipt, FileText, RefreshCw, X } from 'lucide-react';
+import { Search, Trash2, ShieldAlert, ArrowLeft, Loader2, CreditCard, Receipt, FileText, RefreshCw, X, Download, Users, User } from 'lucide-react';
 
 interface AdminBoardProps {
   onClose: () => void;
   onViewInvoice: (invoice: InvoiceData) => void;
 }
 
-const formatDate = (dateStr: string) => {
+interface AdminUser {
+  id: string;
+  email: string;
+  role?: string;
+  firstName: string;
+  lastName: string;
+  createdAt: number;
+  uploadedPicturesCount: number;
+  totalSpend: number;
+  totalCredits: number;
+}
+
+const formatDate = (dateStr: string | number) => {
   if (!dateStr) return '-';
   const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return dateStr;
+  if (isNaN(d.getTime())) return String(dateStr);
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
@@ -22,27 +34,41 @@ const getApiUrl = (path: string) => {
 };
 
 const AdminBoard: React.FC<AdminBoardProps> = ({ onClose, onViewInvoice }) => {
+  const [activeTab, setActiveTab] = useState<'RECEIPTS' | 'USERS'>('RECEIPTS');
   const [invoices, setInvoices] = useState<InvoiceData[]>([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+  const [exportingUserId, setExportingUserId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'ALL' | 'INVOICE' | 'CREDIT_INVOICE'>('ALL');
   const [error, setError] = useState<string | null>(null);
 
-  const fetchAllInvoices = async () => {
+  const fetchAdminData = async () => {
     setLoading(true);
     setError(null);
     try {
       const token = localStorage.getItem('token') || '';
-      const res = await fetch(getApiUrl('/api/admin/invoices'), {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({ detail: 'Failed to fetch admin invoices' }));
+      const headers = { 'Authorization': `Bearer ${token}` };
+
+      const [invRes, usersRes] = await Promise.all([
+        fetch(getApiUrl('/api/admin/invoices'), { headers }),
+        fetch(getApiUrl('/api/admin/users'), { headers })
+      ]);
+
+      if (!invRes.ok) {
+        const data = await invRes.json().catch(() => ({ detail: 'Failed to fetch admin invoices' }));
         throw new Error(data.detail || 'Admin access required.');
       }
-      const data = await res.json();
-      setInvoices(data);
+
+      const invData = await invRes.json();
+      setInvoices(invData);
+
+      if (usersRes.ok) {
+        const userData = await usersRes.json();
+        setUsers(userData);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error loading admin data.');
     } finally {
@@ -51,7 +77,7 @@ const AdminBoard: React.FC<AdminBoardProps> = ({ onClose, onViewInvoice }) => {
   };
 
   useEffect(() => {
-    fetchAllInvoices();
+    fetchAdminData();
   }, []);
 
   const handleDelete = async (id: string, storeName: string) => {
@@ -76,6 +102,60 @@ const AdminBoard: React.FC<AdminBoardProps> = ({ onClose, onViewInvoice }) => {
     }
   };
 
+  const handleExportUserData = async (userId: string, email: string) => {
+    setExportingUserId(userId);
+    try {
+      const token = localStorage.getItem('token') || '';
+      const res = await fetch(getApiUrl(`/api/admin/users/${userId}/export`), {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) {
+        throw new Error('Failed to export user data.');
+      }
+      const data = await res.json();
+      
+      // Trigger JSON file download
+      const jsonStr = JSON.stringify(data, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `user_${userId}_data_export.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Export failed');
+    } finally {
+      setExportingUserId(null);
+    }
+  };
+
+  const handleDeleteUserData = async (userId: string, email: string) => {
+    if (!confirm(`CRITICAL ADMIN ACTION: Are you sure you want to permanently DELETE ALL DATA & ACCOUNT for user "${email}" (${userId})? This action cannot be undone!`)) {
+      return;
+    }
+    setDeletingUserId(userId);
+    try {
+      const token = localStorage.getItem('token') || '';
+      const res = await fetch(getApiUrl(`/api/admin/users/${userId}`), {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) {
+        throw new Error('Failed to delete user data.');
+      }
+      setUsers(prev => prev.filter(u => u.id !== userId));
+      setInvoices(prev => prev.filter((inv: any) => inv.userId !== userId));
+      alert(`User ${email} and all associated receipt data have been permanently deleted.`);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'User deletion failed');
+    } finally {
+      setDeletingUserId(null);
+    }
+  };
+
   const filteredInvoices = useMemo(() => {
     return invoices.filter(inv => {
       const matchesFilter = filter === 'ALL' || inv.type === filter;
@@ -86,18 +166,27 @@ const AdminBoard: React.FC<AdminBoardProps> = ({ onClose, onViewInvoice }) => {
     });
   }, [invoices, filter, searchQuery]);
 
+  const filteredUsers = useMemo(() => {
+    return users.filter(u => {
+      const q = searchQuery.toLowerCase();
+      return (u.email || '').toLowerCase().includes(q) ||
+             (u.id || '').toLowerCase().includes(q) ||
+             (u.firstName || '').toLowerCase().includes(q) ||
+             (u.lastName || '').toLowerCase().includes(q);
+    });
+  }, [users, searchQuery]);
+
   const stats = useMemo(() => {
-    const uniqueUsers = new Set(invoices.map((i: any) => i.userId).filter(Boolean));
     const totalCredits = invoices.filter(i => i.type === 'CREDIT_INVOICE').reduce((acc, curr) => acc + Math.abs(curr.totalAmount || 0), 0);
     const totalSpend = invoices.filter(i => i.type === 'INVOICE' || i.type === 'RECEIPT').reduce((acc, curr) => acc + Math.abs(curr.totalAmount || 0), 0);
     return {
       totalDocs: invoices.length,
-      usersCount: uniqueUsers.size || 1,
+      usersCount: users.length || 1,
       totalCredits,
       totalSpend,
       currency: invoices[0]?.currency || '₪'
     };
-  }, [invoices]);
+  }, [invoices, users]);
 
   return (
     <div className="w-full h-full bg-[#F8FAFC] dark:bg-[#070B14] flex flex-col overflow-hidden text-[#172033] dark:text-[#F8FAFC]">
@@ -118,13 +207,13 @@ const AdminBoard: React.FC<AdminBoardProps> = ({ onClose, onViewInvoice }) => {
               <ShieldAlert size={18} className="text-[#F59E0B]" />
               <h1 className="text-lg font-black tracking-tight text-white">Admin Management Board</h1>
             </div>
-            <p className="text-xs text-[#94A3B8]">System-wide Receipt Database & Control Panel</p>
+            <p className="text-xs text-[#94A3B8]">System-wide Database & User Control Panel</p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           <button 
-            onClick={fetchAllInvoices} 
+            onClick={fetchAdminData} 
             disabled={loading}
             aria-label="Refresh admin data"
             className="w-[44px] h-[44px] rounded-[10px] bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
@@ -154,22 +243,22 @@ const AdminBoard: React.FC<AdminBoardProps> = ({ onClose, onViewInvoice }) => {
             {/* System Overview Metrics Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-white dark:bg-[#111827] p-5 rounded-2xl border border-[#DCE3EC] dark:border-[#334155] shadow-sm flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-xl bg-[#2563EB]/10 text-[#2563EB] flex items-center justify-center shrink-0">
-                  <FileText size={20} />
+                <div className="w-11 h-11 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center shrink-0">
+                  <Users size={20} />
                 </div>
                 <div>
-                  <span className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase block">System Receipts</span>
-                  <span className="text-2xl font-black text-[#172033] dark:text-[#F8FAFC]">{stats.totalDocs}</span>
+                  <span className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase block">Registered Users</span>
+                  <span className="text-2xl font-black text-[#172033] dark:text-[#F8FAFC]">{stats.usersCount}</span>
                 </div>
               </div>
 
               <div className="bg-white dark:bg-[#111827] p-5 rounded-2xl border border-[#DCE3EC] dark:border-[#334155] shadow-sm flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center shrink-0">
-                  <ShieldAlert size={20} />
+                <div className="w-11 h-11 rounded-xl bg-[#2563EB]/10 text-[#2563EB] flex items-center justify-center shrink-0">
+                  <FileText size={20} />
                 </div>
                 <div>
-                  <span className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase block">Active Users</span>
-                  <span className="text-2xl font-black text-[#172033] dark:text-[#F8FAFC]">{stats.usersCount}</span>
+                  <span className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase block">Uploaded Pictures</span>
+                  <span className="text-2xl font-black text-[#172033] dark:text-[#F8FAFC]">{stats.totalDocs}</span>
                 </div>
               </div>
 
@@ -198,13 +287,28 @@ const AdminBoard: React.FC<AdminBoardProps> = ({ onClose, onViewInvoice }) => {
               </div>
             </div>
 
-            {/* Filter & Admin Search Controls */}
+            {/* Main Admin Section View Switcher */}
             <div className="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-[#DCE3EC] dark:border-[#334155] shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
-              <div className="relative w-full md:w-96">
+              <div className="flex gap-2 w-full md:w-auto">
+                <button
+                  onClick={() => setActiveTab('RECEIPTS')}
+                  className={`flex-1 md:flex-initial px-5 py-2.5 min-h-[44px] rounded-[10px] text-xs font-bold transition-all flex items-center gap-2 ${activeTab === 'RECEIPTS' ? 'bg-[#2563EB] text-white shadow-sm' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8]'}`}
+                >
+                  <FileText size={16} /> System Receipts ({invoices.length})
+                </button>
+                <button
+                  onClick={() => setActiveTab('USERS')}
+                  className={`flex-1 md:flex-initial px-5 py-2.5 min-h-[44px] rounded-[10px] text-xs font-bold transition-all flex items-center gap-2 ${activeTab === 'USERS' ? 'bg-[#2563EB] text-white shadow-sm' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8]'}`}
+                >
+                  <Users size={16} /> Registered Users ({users.length})
+                </button>
+              </div>
+
+              <div className="relative w-full md:w-80">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#64748B] dark:text-[#94A3B8]" size={18} />
                 <input 
                   type="text"
-                  placeholder="Search store, invoice #, user ID..."
+                  placeholder={activeTab === 'RECEIPTS' ? "Search store, invoice #, user ID..." : "Search user email, name, user ID..."}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full h-11 pl-10 pr-10 bg-[#F1F5F9] dark:bg-[#1E293B] border border-[#DCE3EC] dark:border-[#334155] rounded-[10px] text-xs focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
@@ -215,116 +319,227 @@ const AdminBoard: React.FC<AdminBoardProps> = ({ onClose, onViewInvoice }) => {
                   </button>
                 )}
               </div>
-
-              <div className="flex gap-2 w-full md:w-auto">
-                <button 
-                  onClick={() => setFilter('ALL')}
-                  className={`flex-1 md:flex-initial px-4 py-2.5 min-h-[44px] rounded-[10px] text-xs font-semibold ${filter === 'ALL' ? 'bg-[#2563EB] text-white' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8]'}`}
-                >
-                  All ({invoices.length})
-                </button>
-                <button 
-                  onClick={() => setFilter('INVOICE')}
-                  className={`flex-1 md:flex-initial px-4 py-2.5 min-h-[44px] rounded-[10px] text-xs font-semibold ${filter === 'INVOICE' ? 'bg-[#2563EB] text-white' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8]'}`}
-                >
-                  Invoices ({invoices.filter(i => i.type === 'INVOICE' || i.type === 'RECEIPT').length})
-                </button>
-                <button 
-                  onClick={() => setFilter('CREDIT_INVOICE')}
-                  className={`flex-1 md:flex-initial px-4 py-2.5 min-h-[44px] rounded-[10px] text-xs font-semibold ${filter === 'CREDIT_INVOICE' ? 'bg-[#2563EB] text-white' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8]'}`}
-                >
-                  Credits ({invoices.filter(i => i.type === 'CREDIT_INVOICE').length})
-                </button>
-              </div>
             </div>
 
-            {/* Admin Management Table */}
-            <div className="bg-white dark:bg-[#111827] rounded-2xl border border-[#DCE3EC] dark:border-[#334155] shadow-sm overflow-hidden">
-              <div className="px-6 py-4 border-b border-[#DCE3EC] dark:border-[#334155] flex justify-between items-center bg-[#F8FAFC]/50 dark:bg-[#111827]">
-                <h2 className="text-sm font-bold text-[#172033] dark:text-[#F8FAFC]">System Receipts Registry</h2>
-                <span className="text-xs bg-[#2563EB]/10 text-[#2563EB] font-bold px-3 py-1 rounded-full">
-                  {filteredInvoices.length} Documents Listed
-                </span>
-              </div>
+            {/* TAB 1: SYSTEM RECEIPTS MANAGEMENT TABLE */}
+            {activeTab === 'RECEIPTS' && (
+              <div className="bg-white dark:bg-[#111827] rounded-2xl border border-[#DCE3EC] dark:border-[#334155] shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-[#DCE3EC] dark:border-[#334155] flex justify-between items-center bg-[#F8FAFC]/50 dark:bg-[#111827]">
+                  <h2 className="text-sm font-bold text-[#172033] dark:text-[#F8FAFC]">System Receipts Registry</h2>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => setFilter('ALL')}
+                      className={`px-3 py-1 text-xs rounded-full font-semibold ${filter === 'ALL' ? 'bg-[#2563EB] text-white' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B]'}`}
+                    >
+                      All ({invoices.length})
+                    </button>
+                    <button 
+                      onClick={() => setFilter('INVOICE')}
+                      className={`px-3 py-1 text-xs rounded-full font-semibold ${filter === 'INVOICE' ? 'bg-[#2563EB] text-white' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B]'}`}
+                    >
+                      Invoices ({invoices.filter(i => i.type === 'INVOICE' || i.type === 'RECEIPT').length})
+                    </button>
+                    <button 
+                      onClick={() => setFilter('CREDIT_INVOICE')}
+                      className={`px-3 py-1 text-xs rounded-full font-semibold ${filter === 'CREDIT_INVOICE' ? 'bg-[#2563EB] text-white' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B]'}`}
+                    >
+                      Credits ({invoices.filter(i => i.type === 'CREDIT_INVOICE').length})
+                    </button>
+                  </div>
+                </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-[#DCE3EC] dark:border-[#334155] bg-[#F8FAFC] dark:bg-[#1E293B]/40 text-xs font-semibold text-[#64748B] dark:text-[#94A3B8]">
-                      <th className="px-6 py-3.5">Store Name</th>
-                      <th className="px-6 py-3.5">Invoice #</th>
-                      <th className="px-6 py-3.5">User ID</th>
-                      <th className="px-6 py-3.5">Date</th>
-                      <th className="px-6 py-3.5">Type</th>
-                      <th className="px-6 py-3.5 text-right">Amount</th>
-                      <th className="px-6 py-3.5 text-center">Admin Delete</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#DCE3EC] dark:divide-[#334155]">
-                    {loading ? (
-                      [1, 2, 3, 4].map(i => (
-                        <tr key={i} className="animate-pulse">
-                          <td colSpan={7} className="px-6 py-4"><div className="h-4 bg-[#F1F5F9] dark:bg-[#1E293B] rounded"></div></td>
-                        </tr>
-                      ))
-                    ) : filteredInvoices.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="px-6 py-12 text-center text-xs text-[#64748B] dark:text-[#94A3B8] italic">
-                          No system receipts found matching query.
-                        </td>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-[#DCE3EC] dark:border-[#334155] bg-[#F8FAFC] dark:bg-[#1E293B]/40 text-xs font-semibold text-[#64748B] dark:text-[#94A3B8]">
+                        <th className="px-6 py-3.5">Store Name</th>
+                        <th className="px-6 py-3.5">Invoice #</th>
+                        <th className="px-6 py-3.5">User ID</th>
+                        <th className="px-6 py-3.5">Date</th>
+                        <th className="px-6 py-3.5">Type</th>
+                        <th className="px-6 py-3.5 text-right">Amount</th>
+                        <th className="px-6 py-3.5 text-center">Admin Action</th>
                       </tr>
-                    ) : (
-                      filteredInvoices.map((inv) => (
-                        <tr key={inv.id} className="hover:bg-[#F8FAFC] dark:hover:bg-[#1E293B] transition-colors text-xs">
-                          <td className="px-6 py-4 font-semibold text-[#172033] dark:text-[#F8FAFC]">
-                            <button 
-                              onClick={() => onViewInvoice(inv)} 
-                              className="hover:underline text-left"
-                            >
-                              {inv.storeName || 'Unknown Store'}
-                            </button>
-                          </td>
-                          <td className="px-6 py-4 font-mono text-[#64748B] dark:text-[#CBD5E1] whitespace-nowrap">
-                            {inv.invoiceNumber || '-'}
-                          </td>
-                          <td className="px-6 py-4 font-mono text-[#2563EB] dark:text-[#60A5FA] whitespace-nowrap">
-                            {(inv as any).userId || 'default'}
-                          </td>
-                          <td className="px-6 py-4 text-[#172033] dark:text-[#CBD5E1] whitespace-nowrap">
-                            {formatDate(inv.date)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {inv.type === 'CREDIT_INVOICE' ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-[#2563EB]/10 text-[#2563EB] dark:bg-[#2563EB]/20 dark:text-[#60A5FA]">
-                                <CreditCard size={11} /> Credit
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-emerald-50 text-[#059669] dark:bg-emerald-950/40 dark:text-[#34D399]">
-                                <Receipt size={11} /> Invoice
-                              </span>
-                            )}
-                          </td>
-                          <td className={`px-6 py-4 text-right font-bold whitespace-nowrap ${inv.type === 'CREDIT_INVOICE' ? 'text-[#059669] dark:text-[#34D399]' : 'text-[#172033] dark:text-[#CBD5E1]'}`}>
-                            {inv.type === 'CREDIT_INVOICE' ? '+' : ''}<span className="text-[#F59E0B] font-black mr-0.5">{inv.currency}</span>{Math.abs(inv.totalAmount).toFixed(2)}
-                          </td>
-                          <td className="px-6 py-4 text-center whitespace-nowrap">
-                            <button
-                              onClick={() => inv.id && handleDelete(inv.id, inv.storeName)}
-                              disabled={deletingId === inv.id}
-                              aria-label={`Admin delete receipt for ${inv.storeName}`}
-                              className="px-3 py-2 min-h-[44px] text-xs font-semibold rounded-[10px] bg-[#DC2626]/10 text-[#DC2626] dark:bg-[#F87171]/10 dark:text-[#F87171] hover:bg-[#DC2626] hover:text-white dark:hover:bg-[#DC2626] dark:hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-[#60A5FA] inline-flex items-center gap-1"
-                            >
-                              {deletingId === inv.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                              Delete
-                            </button>
+                    </thead>
+                    <tbody className="divide-y divide-[#DCE3EC] dark:divide-[#334155]">
+                      {loading ? (
+                        [1, 2, 3, 4].map(i => (
+                          <tr key={i} className="animate-pulse">
+                            <td colSpan={7} className="px-6 py-4"><div className="h-4 bg-[#F1F5F9] dark:bg-[#1E293B] rounded"></div></td>
+                          </tr>
+                        ))
+                      ) : filteredInvoices.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="px-6 py-12 text-center text-xs text-[#64748B] dark:text-[#94A3B8] italic">
+                            No system receipts found matching query.
                           </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+                      ) : (
+                        filteredInvoices.map((inv) => (
+                          <tr key={inv.id} className="hover:bg-[#F8FAFC] dark:hover:bg-[#1E293B] transition-colors text-xs">
+                            <td className="px-6 py-4 font-semibold text-[#172033] dark:text-[#F8FAFC]">
+                              <button 
+                                onClick={() => onViewInvoice(inv)} 
+                                className="hover:underline text-left"
+                              >
+                                {inv.storeName || 'Unknown Store'}
+                              </button>
+                            </td>
+                            <td className="px-6 py-4 font-mono text-[#64748B] dark:text-[#CBD5E1] whitespace-nowrap">
+                              {inv.invoiceNumber || '-'}
+                            </td>
+                            <td className="px-6 py-4 font-mono text-[#2563EB] dark:text-[#60A5FA] whitespace-nowrap">
+                              {(inv as any).userId || 'default'}
+                            </td>
+                            <td className="px-6 py-4 text-[#172033] dark:text-[#CBD5E1] whitespace-nowrap">
+                              {formatDate(inv.date)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {inv.type === 'CREDIT_INVOICE' ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-[#2563EB]/10 text-[#2563EB] dark:bg-[#2563EB]/20 dark:text-[#60A5FA]">
+                                  <CreditCard size={11} /> Credit
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-emerald-50 text-[#059669] dark:bg-emerald-950/40 dark:text-[#34D399]">
+                                  <Receipt size={11} /> Invoice
+                                </span>
+                              )}
+                            </td>
+                            <td className={`px-6 py-4 text-right font-bold whitespace-nowrap ${inv.type === 'CREDIT_INVOICE' ? 'text-[#059669] dark:text-[#34D399]' : 'text-[#172033] dark:text-[#CBD5E1]'}`}>
+                              {inv.type === 'CREDIT_INVOICE' ? '+' : ''}<span className="text-[#F59E0B] font-black mr-0.5">{inv.currency}</span>{Math.abs(inv.totalAmount).toFixed(2)}
+                            </td>
+                            <td className="px-6 py-4 text-center whitespace-nowrap">
+                              <button
+                                onClick={() => inv.id && handleDelete(inv.id, inv.storeName)}
+                                disabled={deletingId === inv.id}
+                                aria-label={`Admin delete receipt for ${inv.storeName}`}
+                                className="px-3 py-2 min-h-[44px] text-xs font-semibold rounded-[10px] bg-[#DC2626]/10 text-[#DC2626] dark:bg-[#F87171]/10 dark:text-[#F87171] hover:bg-[#DC2626] hover:text-white dark:hover:bg-[#DC2626] dark:hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-[#60A5FA] inline-flex items-center gap-1"
+                              >
+                                {deletingId === inv.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* TAB 2: REGISTERED USERS MANAGEMENT TABLE */}
+            {activeTab === 'USERS' && (
+              <div className="bg-white dark:bg-[#111827] rounded-2xl border border-[#DCE3EC] dark:border-[#334155] shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-[#DCE3EC] dark:border-[#334155] flex justify-between items-center bg-[#F8FAFC]/50 dark:bg-[#111827]">
+                  <h2 className="text-sm font-bold text-[#172033] dark:text-[#F8FAFC]">System Users & Per-User Upload Data</h2>
+                  <span className="text-xs bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold px-3 py-1 rounded-full">
+                    {filteredUsers.length} Users Enrolled
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-[#DCE3EC] dark:border-[#334155] bg-[#F8FAFC] dark:bg-[#1E293B]/40 text-xs font-semibold text-[#64748B] dark:text-[#94A3B8]">
+                        <th className="px-6 py-3.5">User Email / Profile</th>
+                        <th className="px-6 py-3.5">User ID</th>
+                        <th className="px-6 py-3.5 text-center">Role</th>
+                        <th className="px-6 py-3.5 text-center">Uploaded Pictures</th>
+                        <th className="px-6 py-3.5 text-right">Total Volume</th>
+                        <th className="px-6 py-3.5 text-right">Total Credits</th>
+                        <th className="px-6 py-3.5 text-center">Admin User Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#DCE3EC] dark:divide-[#334155]">
+                      {loading ? (
+                        [1, 2, 3].map(i => (
+                          <tr key={i} className="animate-pulse">
+                            <td colSpan={7} className="px-6 py-4"><div className="h-4 bg-[#F1F5F9] dark:bg-[#1E293B] rounded"></div></td>
+                          </tr>
+                        ))
+                      ) : filteredUsers.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="px-6 py-12 text-center text-xs text-[#64748B] dark:text-[#94A3B8] italic">
+                            No registered users found matching query.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredUsers.map((u) => (
+                          <tr key={u.id} className="hover:bg-[#F8FAFC] dark:hover:bg-[#1E293B] transition-colors text-xs">
+                            <td className="px-6 py-4 font-semibold text-[#172033] dark:text-[#F8FAFC]">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-full bg-[#2563EB] text-white flex items-center justify-center font-bold shrink-0">
+                                  <User size={15} />
+                                </div>
+                                <div>
+                                  <div className="font-bold text-[#172033] dark:text-[#F8FAFC]">{u.email}</div>
+                                  <div className="text-[11px] font-normal text-[#64748B] dark:text-[#94A3B8]">
+                                    {u.firstName || u.lastName ? `${u.firstName} ${u.lastName}`.trim() : 'Registered User'}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 font-mono text-[#2563EB] dark:text-[#60A5FA] whitespace-nowrap">
+                              {u.id}
+                            </td>
+                            <td className="px-6 py-4 text-center whitespace-nowrap">
+                              {u.role === 'ADMIN' ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-bold rounded-full bg-[#F59E0B]/10 text-[#F59E0B] border border-[#F59E0B]/30">
+                                  <ShieldAlert size={11} /> Admin
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8]">
+                                  User
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 text-center whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-extrabold bg-[#2563EB]/10 text-[#2563EB] dark:bg-[#2563EB]/20 dark:text-[#60A5FA]">
+                                <FileText size={12} /> {u.uploadedPicturesCount} Uploaded
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right font-bold whitespace-nowrap text-[#172033] dark:text-[#CBD5E1]">
+                              <span className="text-[#F59E0B] font-black mr-0.5">₪</span>{u.totalSpend.toFixed(2)}
+                            </td>
+                            <td className="px-6 py-4 text-right font-bold whitespace-nowrap text-[#059669] dark:text-[#34D399]">
+                              <span className="text-[#F59E0B] font-black mr-0.5">₪</span>{u.totalCredits.toFixed(2)}
+                            </td>
+                            <td className="px-6 py-4 text-center whitespace-nowrap">
+                              <div className="flex items-center justify-center gap-2">
+                                {/* Export Data Button */}
+                                <button
+                                  onClick={() => handleExportUserData(u.id, u.email)}
+                                  disabled={exportingUserId === u.id}
+                                  aria-label={`Export receipt data for user ${u.email}`}
+                                  className="px-3 py-2 min-h-[44px] text-xs font-semibold rounded-[10px] bg-[#2563EB]/10 text-[#2563EB] dark:bg-[#2563EB]/20 dark:text-[#60A5FA] hover:bg-[#2563EB] hover:text-white dark:hover:bg-[#2563EB] dark:hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-[#60A5FA] inline-flex items-center gap-1.5"
+                                  title="Export user data as JSON"
+                                >
+                                  {exportingUserId === u.id ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                                  Export Data
+                                </button>
+
+                                {/* Delete User & All Data Button */}
+                                <button
+                                  onClick={() => handleDeleteUserData(u.id, u.email)}
+                                  disabled={deletingUserId === u.id}
+                                  aria-label={`Delete user account and data for ${u.email}`}
+                                  className="px-3 py-2 min-h-[44px] text-xs font-semibold rounded-[10px] bg-[#DC2626]/10 text-[#DC2626] dark:bg-[#F87171]/10 dark:text-[#F87171] hover:bg-[#DC2626] hover:text-white dark:hover:bg-[#DC2626] dark:hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-[#60A5FA] inline-flex items-center gap-1.5"
+                                  title="Delete user account and all receipts"
+                                >
+                                  {deletingUserId === u.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                                  Wipe User Data
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </>
         )}
 
