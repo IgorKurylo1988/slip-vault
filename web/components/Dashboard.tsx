@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { InvoiceData } from '../types';
 import InvoiceListItem from './InvoiceListItem';
 import Button from './Button';
-import { Upload, CreditCard, Receipt, List, FileText, ChevronRight } from 'lucide-react';
+import { Upload, CreditCard, Receipt, List } from 'lucide-react';
 
 type FilterType = 'ALL' | 'INVOICE' | 'CREDIT_INVOICE';
 
@@ -39,16 +39,15 @@ const Dashboard: React.FC<DashboardProps> = ({
   setFilter,
   userEmail,
   userName,
-  onOpenAccountModal,
   onLogout
 }) => {
   const [isDragOver, setIsDragOver] = useState(false);
 
   const stats = useMemo(() => {
     const credits = invoices.filter(i => i.type === 'CREDIT_INVOICE');
-    const totalCredits = credits.reduce((acc, curr) => acc + curr.totalAmount, 0);
+    const totalCredits = credits.reduce((acc, curr) => acc + Math.abs(curr.totalAmount || 0), 0);
     const invoicesOnly = invoices.filter(i => i.type === 'INVOICE' || i.type === 'RECEIPT');
-    const totalSpend = invoicesOnly.reduce((acc, curr) => acc + curr.totalAmount, 0);
+    const totalSpend = invoicesOnly.reduce((acc, curr) => acc + Math.abs(curr.totalAmount || 0), 0);
     const currency = invoices[0]?.currency || '₪';
     return { count: invoices.length, creditCount: credits.length, creditTotal: totalCredits, totalSpend, currency };
   }, [invoices]);
@@ -96,61 +95,64 @@ const Dashboard: React.FC<DashboardProps> = ({
             fullWidth 
             variant="primary"
             icon={<Upload size={18} aria-hidden="true" />}
-            className="mb-2 shadow-md"
+            className="mb-2 shadow-md min-h-[44px]"
           >
             Upload Receipt
           </Button>
           <p className="text-xs text-[#64748B] dark:text-[#94A3B8] font-medium">
             Drag & drop receipt here or click to browse
           </p>
-          <span className="inline-block mt-1 text-xs text-[#94A3B8] dark:text-[#94A3B8] bg-[#F1F5F9] dark:bg-[#1E293B] px-2 py-0.5 rounded-full font-medium">
+          <span className="inline-block mt-1 text-xs text-[#94A3B8] dark:text-[#94A3B8] bg-[#F1F5F9] dark:bg-[#1E293B] px-2.5 py-1 rounded-full font-medium">
             JPEG, PNG, PDF • Max 10MB
           </span>
         </div>
 
-        {/* Navigation / Filter Tabs */}
-        <div className="mt-6 space-y-1">
+        {/* Navigation / Filter Tabs with 44px Touch Targets */}
+        <div className="mt-6 space-y-2">
           <label className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-normal block mb-2 px-1">
             Filter View
           </label>
           <button 
             onClick={() => setFilter('ALL')}
-            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-[10px] text-xs font-semibold transition-all ${
+            aria-label="Filter all receipts"
+            className={`w-full flex items-center justify-between px-4 py-3 min-h-[44px] rounded-[10px] text-xs font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-[#60A5FA] ${
               filter === 'ALL' 
                 ? 'bg-[#2563EB] text-white shadow-sm' 
                 : 'text-[#172033] dark:text-[#CBD5E1] hover:bg-white dark:hover:bg-[#111827]'
             }`}
           >
             <span className="flex items-center gap-2.5"><List size={16} /> All Receipts</span>
-            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${filter === 'ALL' ? 'bg-white/20 text-white' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8]'}`}>
+            <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${filter === 'ALL' ? 'bg-white/20 text-white' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8]'}`}>
               {stats.count}
             </span>
           </button>
 
           <button 
             onClick={() => setFilter('INVOICE')}
-            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-[10px] text-xs font-semibold transition-all ${
+            aria-label="Filter invoices"
+            className={`w-full flex items-center justify-between px-4 py-3 min-h-[44px] rounded-[10px] text-xs font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-[#60A5FA] ${
               filter === 'INVOICE' 
                 ? 'bg-[#2563EB] text-white shadow-sm' 
                 : 'text-[#172033] dark:text-[#CBD5E1] hover:bg-white dark:hover:bg-[#111827]'
             }`}
           >
             <span className="flex items-center gap-2.5"><Receipt size={16} /> Invoices</span>
-            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${filter === 'INVOICE' ? 'bg-white/20 text-white' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8]'}`}>
+            <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${filter === 'INVOICE' ? 'bg-white/20 text-white' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8]'}`}>
               {invoices.filter(i => i.type === 'INVOICE' || i.type === 'RECEIPT').length}
             </span>
           </button>
 
           <button 
             onClick={() => setFilter('CREDIT_INVOICE')}
-            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-[10px] text-xs font-semibold transition-all ${
+            aria-label="Filter credit receipts"
+            className={`w-full flex items-center justify-between px-4 py-3 min-h-[44px] rounded-[10px] text-xs font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-[#60A5FA] ${
               filter === 'CREDIT_INVOICE' 
                 ? 'bg-[#2563EB] text-white shadow-sm' 
                 : 'text-[#172033] dark:text-[#CBD5E1] hover:bg-white dark:hover:bg-[#111827]'
             }`}
           >
             <span className="flex items-center gap-2.5"><CreditCard size={16} /> Credits</span>
-            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${filter === 'CREDIT_INVOICE' ? 'bg-white/20 text-white' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8]'}`}>
+            <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${filter === 'CREDIT_INVOICE' ? 'bg-white/20 text-white' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8]'}`}>
               {stats.creditCount}
             </span>
           </button>
@@ -162,7 +164,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         {activeTasks && activeTasks.map(task => (
           <div key={task.id} className="p-3 bg-[#059669]/10 border border-[#059669]/20 rounded-2xl flex items-center justify-between animate-pulse">
             <span className="text-xs font-semibold text-[#172033] dark:text-[#F8FAFC]">Analyzing Receipt...</span>
-            <span className="text-xs bg-[#059669] text-white px-2 py-0.5 rounded-full font-bold">Processing</span>
+            <span className="text-xs bg-[#059669] text-white px-2.5 py-1 rounded-full font-bold">Processing</span>
           </div>
         ))}
         {isLoading ? (
@@ -182,9 +184,9 @@ const Dashboard: React.FC<DashboardProps> = ({
         )}
       </div>
 
-      {/* Bottom Compact Logout Option */}
+      {/* Bottom Logout Option with 44px Touch Target */}
       <div className="p-4 border-t border-[#DCE3EC] dark:border-[#334155] bg-white dark:bg-[#111827] flex items-center justify-between shrink-0">
-        <div className="flex flex-col truncate pr-2">
+        <div className="flex flex-col truncate pr-3">
           <span className="text-xs font-semibold text-[#172033] dark:text-[#F8FAFC] truncate">
             {userName || userEmail.split('@')[0]}
           </span>
@@ -193,7 +195,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         <button 
           onClick={onLogout}
           aria-label="Log out of account"
-          className="px-3 py-1.5 text-xs font-semibold text-[#DC2626] dark:text-[#F87171] hover:bg-[#DC2626]/10 dark:hover:bg-[#F87171]/10 rounded-[10px] transition-colors focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
+          className="min-h-[44px] min-w-[70px] px-4 py-2.5 text-xs font-semibold text-[#DC2626] dark:text-[#F87171] hover:bg-[#DC2626]/10 dark:hover:bg-[#F87171]/10 rounded-[10px] transition-colors focus:outline-none focus:ring-2 focus:ring-[#60A5FA] shrink-0"
         >
           Logout
         </button>

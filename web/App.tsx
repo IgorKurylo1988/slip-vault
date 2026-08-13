@@ -7,7 +7,7 @@ import CameraCapture from './components/CameraCapture';
 import ReceiptView from './components/ReceiptView';
 import Dashboard from './components/Dashboard';
 import Button from './components/Button';
-import { Loader2, Search, X, CreditCard, Receipt, FileText, Sun, Moon, User, ChevronRight, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
+import { Loader2, Search, X, CreditCard, Receipt, FileText, Sun, Moon, User, ChevronRight, ArrowUpDown, ChevronUp, ChevronDown, Upload } from 'lucide-react';
 
 type SortField = 'storeName' | 'invoiceNumber' | 'date' | 'type' | 'totalAmount';
 type SortOrder = 'asc' | 'desc';
@@ -260,32 +260,42 @@ const App: React.FC = () => {
     setState(AppState.IDLE);
   };
 
+  // Deduplicate invoices array to prevent duplicate IDs or duplicate items
+  const uniqueInvoices = useMemo(() => {
+    const map = new Map<string, InvoiceData>();
+    invoices.forEach(inv => {
+      const key = inv.id ? `id:${inv.id}` : `fp:${inv.storeName || ''}_${inv.invoiceNumber || ''}_${inv.date || ''}_${inv.type || ''}_${inv.totalAmount || 0}`;
+      map.set(key, inv);
+    });
+    return Array.from(map.values());
+  }, [invoices]);
+
   // Metrics calculation
   const stats = useMemo(() => {
-    const credits = invoices.filter(i => i.type === 'CREDIT_INVOICE');
-    const totalCredits = credits.reduce((acc, curr) => acc + curr.totalAmount, 0);
-    const invoicesOnly = invoices.filter(i => i.type === 'INVOICE' || i.type === 'RECEIPT');
-    const totalSpend = invoicesOnly.reduce((acc, curr) => acc + curr.totalAmount, 0);
-    const currency = invoices[0]?.currency || '₪';
+    const credits = uniqueInvoices.filter(i => i.type === 'CREDIT_INVOICE');
+    const totalCredits = credits.reduce((acc, curr) => acc + Math.abs(curr.totalAmount || 0), 0);
+    const invoicesOnly = uniqueInvoices.filter(i => i.type === 'INVOICE' || i.type === 'RECEIPT');
+    const totalSpend = invoicesOnly.reduce((acc, curr) => acc + Math.abs(curr.totalAmount || 0), 0);
+    const currency = uniqueInvoices[0]?.currency || '₪';
     return { 
-      count: invoices.length, 
+      count: uniqueInvoices.length, 
       creditCount: credits.length, 
       creditTotal: totalCredits,
       invoiceCount: invoicesOnly.length,
       totalSpend,
       currency 
     };
-  }, [invoices]);
+  }, [uniqueInvoices]);
 
   // Filtered invoices
   const desktopFilteredInvoices = useMemo(() => {
-    return invoices.filter(inv => {
+    return uniqueInvoices.filter(inv => {
       const matchesFilter = filter === 'ALL' || inv.type === filter;
       const matchesSearch = (inv.storeName || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
                            (inv.invoiceNumber || '').toLowerCase().includes(searchQuery.toLowerCase());
       return matchesFilter && matchesSearch;
     });
-  }, [invoices, filter, searchQuery]);
+  }, [uniqueInvoices, filter, searchQuery]);
 
   // Handle column sort clicks
   const handleSortClick = (field: SortField) => {
@@ -434,7 +444,7 @@ const App: React.FC = () => {
               type="submit" 
               variant="primary" 
               fullWidth
-              className="mt-2"
+              className="mt-2 min-h-[44px]"
               disabled={authLoading}
               icon={authLoading ? <Loader2 className="animate-spin" /> : undefined}
             >
@@ -451,7 +461,7 @@ const App: React.FC = () => {
                 setAuthFirstName("");
                 setAuthLastName("");
               }}
-              className="text-xs font-semibold text-[#2563EB] hover:text-[#4F46E5] transition-colors"
+              className="text-xs font-semibold text-[#2563EB] hover:text-[#4F46E5] transition-colors p-2"
             >
               {isRegistering ? "Already have an account? Log In" : "New to Receipt Vault? Create Account"}
             </button>
@@ -469,7 +479,7 @@ const App: React.FC = () => {
           {/* Left Panel: Sidebar */}
           <div className={`h-full w-full md:w-[320px] md:shrink-0 ${state === AppState.IDLE ? 'block' : 'hidden md:block'} flex flex-col`}>
             <Dashboard 
-              invoices={invoices}
+              invoices={uniqueInvoices}
               activeTasks={activeTasks}
               isLoading={isLoadingInvoices}
               onUploadClick={handleFileUpload}
@@ -487,12 +497,12 @@ const App: React.FC = () => {
           {/* Center/Right Panel: Main Receipts Area */}
           <div className="h-full flex-1 bg-[#F8FAFC] dark:bg-[#070B14] flex flex-col overflow-hidden">
             {/* Header: Page Title "Receipts", Single Global Search, Account & Theme Buttons */}
-            <header className="w-full bg-white dark:bg-[#111827] border-b border-[#DCE3EC] dark:border-[#334155] py-4 px-6 shadow-sm shrink-0 flex items-center justify-between gap-4">
-              <h1 className="text-xl font-bold text-[#172033] dark:text-[#F8FAFC]">Receipts</h1>
+            <header className="w-full bg-white dark:bg-[#111827] border-b border-[#DCE3EC] dark:border-[#334155] py-3.5 px-4 md:px-6 shadow-sm shrink-0 flex items-center justify-between gap-3">
+              <h1 className="text-lg md:text-xl font-bold text-[#172033] dark:text-[#F8FAFC] shrink-0">Receipts</h1>
               
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 md:gap-3 flex-1 justify-end">
                 {/* Single Global Search in Header */}
-                <div className="relative w-64 md:w-80">
+                <div className="relative w-full max-w-[240px] sm:max-w-xs md:max-w-sm">
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#64748B] dark:text-[#94A3B8]" size={18} aria-hidden="true" />
                   <input 
                     type="text"
@@ -506,7 +516,7 @@ const App: React.FC = () => {
                     <button 
                       onClick={() => setSearchQuery('')}
                       aria-label="Clear search query"
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#172033] dark:text-[#94A3B8] dark:hover:text-[#F8FAFC]"
+                      className="w-[44px] h-[44px] absolute right-0 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#172033] dark:text-[#94A3B8] dark:hover:text-[#F8FAFC] flex items-center justify-center"
                     >
                       <X size={16} />
                     </button>
@@ -517,22 +527,22 @@ const App: React.FC = () => {
                 <button 
                   onClick={() => setIsAccountModalOpen(true)}
                   aria-label="Account Settings"
-                  className="flex items-center gap-2 px-3 py-2 rounded-[10px] bg-[#F1F5F9] dark:bg-[#1E293B] border border-[#DCE3EC] dark:border-[#334155] hover:border-[#2563EB] transition-all focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
+                  className="min-h-[44px] min-w-[44px] flex items-center gap-2 px-3 py-2 rounded-[10px] bg-[#F1F5F9] dark:bg-[#1E293B] border border-[#DCE3EC] dark:border-[#334155] hover:border-[#2563EB] transition-all focus:outline-none focus:ring-2 focus:ring-[#60A5FA] shrink-0"
                   title="Account Settings"
                 >
-                  <div className="w-7 h-7 rounded-full bg-[#2563EB] text-white flex items-center justify-center font-bold text-xs">
+                  <div className="w-7 h-7 rounded-full bg-[#2563EB] text-white flex items-center justify-center font-bold text-xs shrink-0">
                     <User size={14} />
                   </div>
-                  <span className="text-xs font-semibold text-[#172033] dark:text-[#F8FAFC] hidden sm:inline truncate max-w-[120px]">
+                  <span className="text-xs font-semibold text-[#172033] dark:text-[#F8FAFC] hidden sm:inline truncate max-w-[100px]">
                     {userNameDisplay}
                   </span>
                 </button>
 
-                {/* Theme Toggle Button */}
+                {/* Theme Toggle Button - 44x44px */}
                 <button
                   onClick={toggleTheme}
                   aria-label={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-                  className="p-2.5 rounded-[10px] bg-[#F1F5F9] hover:bg-[#DCE3EC] dark:bg-[#1E293B] dark:hover:bg-[#334155] text-[#172033] dark:text-[#CBD5E1] transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
+                  className="w-[44px] h-[44px] min-w-[44px] min-h-[44px] rounded-[10px] bg-[#F1F5F9] hover:bg-[#DCE3EC] dark:bg-[#1E293B] dark:hover:bg-[#334155] text-[#172033] dark:text-[#CBD5E1] transition-colors shrink-0 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
                   title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
                 >
                   {theme === 'dark' ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} className="text-indigo-600" />}
@@ -541,7 +551,7 @@ const App: React.FC = () => {
             </header>
 
             {/* Scrollable Content Area */}
-            <div className="flex-1 overflow-y-auto p-6 no-scrollbar">
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 no-scrollbar safe-container">
               {state === AppState.VIEWING && invoiceData ? (
                 <div className="w-full max-w-4xl mx-auto animate-in fade-in duration-200">
                   <ReceiptView 
@@ -557,37 +567,37 @@ const App: React.FC = () => {
               ) : (
                 <div className="max-w-6xl mx-auto w-full space-y-6">
                   
-                  {/* Summary Cards */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="bg-white dark:bg-[#111827] p-6 rounded-2xl border border-[#DCE3EC] dark:border-[#334155] shadow-sm flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-[#F1F5F9] dark:bg-[#1E293B] flex items-center justify-center text-[#2563EB]">
+                  {/* Summary Cards: 1 column on mobile 320px, 2 on sm, 3 on md */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+                    <div className="bg-white dark:bg-[#111827] p-5 md:p-6 rounded-2xl border border-[#DCE3EC] dark:border-[#334155] shadow-sm flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-[#F1F5F9] dark:bg-[#1E293B] flex items-center justify-center text-[#2563EB] shrink-0">
                         <FileText size={22} aria-hidden="true" />
                       </div>
-                      <div>
-                        <span className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-normal block">Total Documents</span>
+                      <div className="min-w-0 flex-1">
+                        <span className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-normal block truncate">Total Documents</span>
                         <span className="text-2xl font-black text-[#172033] dark:text-[#F8FAFC]">{stats.count}</span>
                       </div>
                     </div>
                     
-                    <div className="bg-white dark:bg-[#111827] p-6 rounded-2xl border border-[#DCE3EC] dark:border-[#334155] shadow-sm flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center text-[#059669] dark:text-[#34D399]">
+                    <div className="bg-white dark:bg-[#111827] p-5 md:p-6 rounded-2xl border border-[#DCE3EC] dark:border-[#334155] shadow-sm flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center text-[#059669] dark:text-[#34D399] shrink-0">
                         <Receipt size={22} aria-hidden="true" />
                       </div>
-                      <div>
-                        <span className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-normal block">Total Spent</span>
-                        <span className="text-2xl font-black text-[#172033] dark:text-[#F8FAFC]">
+                      <div className="min-w-0 flex-1">
+                        <span className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-normal block truncate">Total Spent</span>
+                        <span className="text-2xl font-black text-[#172033] dark:text-[#F8FAFC] truncate block">
                           <span className="text-[#F59E0B] font-black mr-0.5">{stats.currency}</span>{stats.totalSpend.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </span>
                       </div>
                     </div>
 
-                    <div className="bg-white dark:bg-[#111827] p-6 rounded-2xl border border-[#DCE3EC] dark:border-[#334155] shadow-sm flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-[#2563EB]/10 dark:bg-[#2563EB]/20 flex items-center justify-center text-[#2563EB] dark:text-[#60A5FA]">
+                    <div className="bg-white dark:bg-[#111827] p-5 md:p-6 rounded-2xl border border-[#DCE3EC] dark:border-[#334155] shadow-sm flex items-center gap-4 sm:col-span-2 md:col-span-1">
+                      <div className="w-12 h-12 rounded-xl bg-[#2563EB]/10 dark:bg-[#2563EB]/20 flex items-center justify-center text-[#2563EB] dark:text-[#60A5FA] shrink-0">
                         <CreditCard size={22} aria-hidden="true" />
                       </div>
-                      <div>
-                        <span className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-normal block">Credit Balance</span>
-                        <span className="text-2xl font-black text-[#2563EB] dark:text-[#60A5FA]">
+                      <div className="min-w-0 flex-1">
+                        <span className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-normal block truncate">Credit Balance</span>
+                        <span className="text-2xl font-black text-[#2563EB] dark:text-[#60A5FA] truncate block">
                           <span className="text-[#F59E0B] font-black mr-0.5">{stats.currency}</span>{stats.creditTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </span>
                       </div>
@@ -608,7 +618,7 @@ const App: React.FC = () => {
                         <thead>
                           <tr className="border-b border-[#DCE3EC] dark:border-[#334155] bg-[#F8FAFC] dark:bg-[#1E293B]/40">
                             <th className="px-6 py-3.5">
-                              <button onClick={() => handleSortClick('storeName')} className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] flex items-center gap-1 hover:text-[#172033] dark:hover:text-[#F8FAFC] focus:outline-none">
+                              <button onClick={() => handleSortClick('storeName')} className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] flex items-center gap-1 hover:text-[#172033] dark:hover:text-[#F8FAFC] focus:outline-none min-h-[44px]">
                                 Store {sortField === 'storeName' ? (sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />) : <ArrowUpDown size={12} />}
                               </button>
                             </th>
@@ -616,17 +626,17 @@ const App: React.FC = () => {
                               Invoice #
                             </th>
                             <th className="px-6 py-3.5">
-                              <button onClick={() => handleSortClick('date')} className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] flex items-center gap-1 hover:text-[#172033] dark:hover:text-[#F8FAFC] focus:outline-none">
+                              <button onClick={() => handleSortClick('date')} className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] flex items-center gap-1 hover:text-[#172033] dark:hover:text-[#F8FAFC] focus:outline-none min-h-[44px]">
                                 Date {sortField === 'date' ? (sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />) : <ArrowUpDown size={12} />}
                               </button>
                             </th>
                             <th className="px-6 py-3.5">
-                              <button onClick={() => handleSortClick('type')} className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] flex items-center gap-1 hover:text-[#172033] dark:hover:text-[#F8FAFC] focus:outline-none">
+                              <button onClick={() => handleSortClick('type')} className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] flex items-center gap-1 hover:text-[#172033] dark:hover:text-[#F8FAFC] focus:outline-none min-h-[44px]">
                                 Type {sortField === 'type' ? (sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />) : <ArrowUpDown size={12} />}
                               </button>
                             </th>
                             <th className="px-6 py-3.5 text-right">
-                              <button onClick={() => handleSortClick('totalAmount')} className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] inline-flex items-center gap-1 hover:text-[#172033] dark:hover:text-[#F8FAFC] focus:outline-none">
+                              <button onClick={() => handleSortClick('totalAmount')} className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] inline-flex items-center gap-1 hover:text-[#172033] dark:hover:text-[#F8FAFC] focus:outline-none min-h-[44px]">
                                 Amount {sortField === 'totalAmount' ? (sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />) : <ArrowUpDown size={12} />}
                               </button>
                             </th>
@@ -676,17 +686,17 @@ const App: React.FC = () => {
                                               e.stopPropagation();
                                               setExpandedGroups(prev => ({ ...prev, [parent.id]: !prev[parent.id] }));
                                             }}
-                                            aria-label={isExpanded ? "Collapse group" : "Expand group"}
-                                            className="p-1 rounded hover:bg-[#F1F5F9] dark:hover:bg-[#1E293B] transition-transform"
+                                            aria-label={isExpanded ? "Collapse receipt group" : "Expand receipt group"}
+                                            className="w-[44px] h-[44px] min-w-[44px] min-h-[44px] rounded-full hover:bg-[#F1F5F9] dark:hover:bg-[#1E293B] transition-transform flex items-center justify-center shrink-0 focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
                                           >
-                                            <ChevronRight size={16} className={`text-[#64748B] dark:text-[#94A3B8] transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
+                                            <ChevronRight size={18} className={`text-[#64748B] dark:text-[#94A3B8] transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
                                           </button>
                                         ) : (
                                           <span className="w-4 shrink-0"></span>
                                         )}
-                                        <span className="truncate">{parent.storeName || "Unknown Store"}</span>
+                                        <span className="line-clamp-2 break-words max-w-[220px]">{parent.storeName || "Unknown Store"}</span>
                                         {hasChildren && (
-                                          <span className="text-xs bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8] px-2 py-0.5 rounded-full font-semibold ml-1">
+                                          <span className="text-xs bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8] px-2 py-0.5 rounded-full font-semibold ml-1 shrink-0">
                                             {children.length + 1} docs
                                           </span>
                                         )}
@@ -715,13 +725,14 @@ const App: React.FC = () => {
                                         : 'text-[#172033] dark:text-[#CBD5E1]'
                                     }`}>
                                       {parent.type === 'CREDIT_INVOICE' ? '+' : ''}
-                                      <span className="text-[#F59E0B] font-extrabold mr-0.5">{parent.currency}</span>
+                                      <span className="text-[#F59E0B] font-black mr-0.5">{parent.currency}</span>
                                       {Math.abs(parent.totalAmount).toFixed(2)}
                                     </td>
                                     <td className="px-6 py-4 text-center whitespace-nowrap">
                                       <button 
                                         onClick={(e) => { e.stopPropagation(); handleViewInvoice(parent); }}
-                                        className="px-3 py-1 text-xs font-semibold rounded-[10px] bg-[#F1F5F9] text-[#172033] hover:bg-[#2563EB] hover:text-white dark:bg-[#1E293B] dark:text-[#CBD5E1] dark:hover:bg-[#2563EB] dark:hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
+                                        aria-label={`View details for ${parent.storeName}`}
+                                        className="min-h-[44px] min-w-[64px] px-3.5 py-2 inline-flex items-center justify-center text-xs font-semibold rounded-[10px] bg-[#F1F5F9] text-[#172033] hover:bg-[#2563EB] hover:text-white dark:bg-[#1E293B] dark:text-[#CBD5E1] dark:hover:bg-[#2563EB] dark:hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
                                       >
                                         View
                                       </button>
@@ -738,8 +749,8 @@ const App: React.FC = () => {
                                       <td className="px-6 py-3 font-medium text-[#172033] dark:text-[#CBD5E1] pl-10">
                                         <div className="flex items-center gap-2">
                                           <span className="text-[#2563EB] dark:text-[#60A5FA] font-bold">┗</span>
-                                          <span className="truncate">{child.storeName}</span>
-                                          <span className="text-xs font-medium text-[#2563EB] dark:text-[#60A5FA] bg-[#2563EB]/10 dark:bg-[#2563EB]/20 px-2 py-0.5 rounded-full">
+                                          <span className="line-clamp-2 break-words max-w-[200px]">{child.storeName}</span>
+                                          <span className="text-xs font-medium text-[#2563EB] dark:text-[#60A5FA] bg-[#2563EB]/10 dark:bg-[#2563EB]/20 px-2 py-0.5 rounded-full shrink-0">
                                             Original document
                                           </span>
                                         </div>
@@ -773,7 +784,8 @@ const App: React.FC = () => {
                                       <td className="px-6 py-3 text-center whitespace-nowrap">
                                         <button 
                                           onClick={(e) => { e.stopPropagation(); handleViewInvoice(child); }}
-                                          className="px-2.5 py-1 text-xs font-semibold rounded-[10px] bg-white text-[#172033] hover:bg-[#2563EB] hover:text-white dark:bg-[#111827] dark:text-[#CBD5E1] dark:hover:bg-[#2563EB] transition-colors focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
+                                          aria-label={`View details for ${child.storeName}`}
+                                          className="min-h-[44px] min-w-[64px] px-3 py-2 inline-flex items-center justify-center text-xs font-semibold rounded-[10px] bg-white text-[#172033] hover:bg-[#2563EB] hover:text-white dark:bg-[#111827] dark:text-[#CBD5E1] dark:hover:bg-[#2563EB] transition-colors focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
                                         >
                                           View
                                         </button>
@@ -825,7 +837,7 @@ const App: React.FC = () => {
            </div>
            <h3 className="text-xl font-bold text-[#172033] dark:text-[#F8FAFC] mb-2">Error Processing</h3>
            <p className="text-xs text-[#64748B] dark:text-[#94A3B8] text-center mb-6 leading-relaxed">{errorMsg}</p>
-           <Button onClick={resetApp} variant="primary" className="w-full">Try Again</Button>
+           <Button onClick={resetApp} variant="primary" className="w-full min-h-[44px]">Try Again</Button>
         </div>
       )}
 
@@ -846,6 +858,7 @@ const App: React.FC = () => {
               onClick={() => setDialogMessage(null)} 
               variant="primary" 
               fullWidth
+              className="min-h-[44px]"
             >
               Okay
             </Button>
@@ -853,14 +866,14 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Account Modal */}
+      {/* Account Modal - Hides internal raw User ID */}
       {isAccountModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="bg-white dark:bg-[#111827] rounded-2xl p-6 max-w-md w-full shadow-2xl border border-[#DCE3EC] dark:border-[#334155] flex flex-col relative">
             <button 
               onClick={() => setIsAccountModalOpen(false)}
-              aria-label="Close modal"
-              className="absolute top-4 right-4 p-2 rounded-full text-[#64748B] hover:text-[#172033] dark:text-[#94A3B8] dark:hover:text-[#F8FAFC]"
+              aria-label="Close profile modal"
+              className="w-[44px] h-[44px] min-w-[44px] min-h-[44px] absolute top-4 right-4 rounded-full text-[#64748B] hover:text-[#172033] dark:text-[#94A3B8] dark:hover:text-[#F8FAFC] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
             >
               <X size={18} />
             </button>
@@ -874,7 +887,6 @@ const App: React.FC = () => {
                   {userNameDisplay}
                 </h3>
                 <p className="text-xs text-[#64748B] dark:text-[#94A3B8] truncate">{userEmail}</p>
-                <span className="text-xs font-mono text-[#2563EB] dark:text-[#60A5FA] mt-0.5">User ID: {userId || 'demo'}</span>
               </div>
             </div>
 
@@ -884,7 +896,7 @@ const App: React.FC = () => {
               <button
                 onClick={toggleTheme}
                 aria-label="Toggle theme"
-                className="flex items-center gap-2 px-3 py-1.5 rounded-[10px] bg-white dark:bg-[#111827] border border-[#DCE3EC] dark:border-[#334155] text-xs font-semibold text-[#172033] dark:text-[#CBD5E1] shadow-sm focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
+                className="flex items-center gap-2 px-3 py-2 min-h-[44px] rounded-[10px] bg-white dark:bg-[#111827] border border-[#DCE3EC] dark:border-[#334155] text-xs font-semibold text-[#172033] dark:text-[#CBD5E1] shadow-sm focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
               >
                 {theme === 'dark' ? <Sun size={14} className="text-amber-400" /> : <Moon size={14} className="text-indigo-600" />}
                 {theme === 'dark' ? 'Dark' : 'Light'}
@@ -893,10 +905,10 @@ const App: React.FC = () => {
 
             {/* Actions */}
             <div className="flex gap-3">
-              <Button onClick={() => setIsAccountModalOpen(false)} variant="secondary" className="flex-1">
+              <Button onClick={() => setIsAccountModalOpen(false)} variant="secondary" className="flex-1 min-h-[44px]">
                 Close
               </Button>
-              <Button onClick={handleLogout} variant="danger" className="flex-1">
+              <Button onClick={handleLogout} variant="danger" className="flex-1 min-h-[44px]">
                 Logout
               </Button>
             </div>
