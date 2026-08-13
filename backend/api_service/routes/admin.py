@@ -35,7 +35,7 @@ async def get_admin_user(authorization: Optional[str] = Header(None)) -> dict:
         )
     return payload
 
-@router.get("/invoices", response_model=List[InvoiceModel])
+@admin_routes.get("/invoices", response_model=List[InvoiceModel])
 async def get_admin_invoices(admin_payload: dict = Depends(get_admin_user)):
     try:
         invoices = invoice_repo.get_all_system_invoices()
@@ -49,7 +49,7 @@ async def get_admin_invoices(admin_payload: dict = Depends(get_admin_user)):
             detail=f"Database error: {str(e)}"
         )
 
-@router.delete("/invoices/{invoice_id}")
+@admin_routes.delete("/invoices/{invoice_id}")
 async def delete_admin_invoice(invoice_id: str, admin_payload: dict = Depends(get_admin_user)):
     try:
         inv = invoice_repo.get_by_id(invoice_id)
@@ -68,7 +68,7 @@ async def delete_admin_invoice(invoice_id: str, admin_payload: dict = Depends(ge
             detail=f"Failed to delete invoice: {str(e)}"
         )
 
-@router.get("/users")
+@admin_routes.get("/users")
 async def get_admin_users(admin_payload: dict = Depends(get_admin_user)):
     try:
         users = user_repo.get_all()
@@ -108,7 +108,7 @@ async def get_admin_users(admin_payload: dict = Depends(get_admin_user)):
             detail=f"Database error listing users: {str(e)}"
         )
 
-@router.get("/users/{user_id}/export")
+@admin_routes.get("/users/{user_id}/export")
 async def export_user_data(user_id: str, admin_payload: dict = Depends(get_admin_user)):
     try:
         invoices = invoice_repo.get_all_completed(user_id)
@@ -127,7 +127,7 @@ async def export_user_data(user_id: str, admin_payload: dict = Depends(get_admin
             detail=f"Failed to export user data: {str(e)}"
         )
 
-@router.delete("/users/{user_id}")
+@admin_routes.delete("/users/{user_id}")
 async def delete_admin_user_data(user_id: str, admin_payload: dict = Depends(get_admin_user)):
     try:
         invoice_repo.delete_all_for_user(user_id)
