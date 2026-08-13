@@ -40,6 +40,24 @@ def create_jwt_token(user_id: str, email: str) -> str:
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
+def create_reset_token(user_id: str, email: str) -> str:
+    """Generates a 1-hour signed password reset token"""
+    payload = {
+        "sub": user_id,
+        "email": email,
+        "type": "password_reset",
+        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=1),
+        "iat": datetime.datetime.utcnow()
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+def verify_reset_token(token: str) -> dict:
+    """Verifies password reset token and returns payload"""
+    payload = decode_jwt_token(token)
+    if payload and payload.get("type") == "password_reset":
+        return payload
+    return {}
+
 def decode_jwt_token(token: str) -> dict:
     """Decodes and validates a JWT token"""
     try:

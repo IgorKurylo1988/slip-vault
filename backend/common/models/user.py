@@ -18,3 +18,10 @@ class UserRegisterSchema(BaseModel):
     password: str
     firstName: Optional[str] = Field(default="")
     lastName: Optional[str] = Field(default="")
+
+class ForgotPasswordSchema(BaseModel):
+    email: str
+
+class ResetPasswordSchema(BaseModel):
+    token: str
+    newPassword: str

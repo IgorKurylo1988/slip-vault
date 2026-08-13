@@ -11,7 +11,7 @@ from common.repository.invoice import InvoiceRepository
 user_repo = UserRepository()
 invoice_repo = InvoiceRepository()
 
-router = APIRouter(prefix="/api/admin", tags=["admin"])
+admin_routes = APIRouter(prefix="/api/admin", tags=["admin"])
 
 async def get_admin_user(authorization: Optional[str] = Header(None)) -> dict:
     """Validates JWT token and verifies admin authorization"""

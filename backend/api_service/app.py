@@ -2,31 +2,38 @@ import os
 import sys
 import uuid
 import asyncio
-from fastapi import FastAPI, HTTPException, status, Header, Depends
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+import datetime
 from typing import List, Optional
 from dotenv import load_dotenv
-import datetime
+from fastapi import FastAPI, HTTPException, status, Header, Depends, Request
+from fastapi.middleware.cors import CORSMiddleware
 
-# Add the parent backend folder to sys.path to allow importing from the common folder
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Ensure both parent 'backend' and current 'api_service' folders are in sys.path for clean static imports
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
 
-# Import shared modules and drivers from common package
+# Standard Static FastAPI Imports
 from common import db
 from common.storage import get_storage_provider
 from common.messaging import get_messaging_provider
-from common.auth_utils import hash_password, verify_password, create_jwt_token, decode_jwt_token
+from common.auth_utils import (
+    hash_password, verify_password, create_jwt_token, 
+    decode_jwt_token, create_reset_token, verify_reset_token
+)
+from common.email_service import send_password_reset_email
 from common.schemas import ProcessInvoiceRequest
 from common.models.invoice import InvoiceModel
-from common.models.user import UserAuthSchema, UserRegisterSchema
-
-# Import repositories
+from common.models.user import UserAuthSchema, UserRegisterSchema, ForgotPasswordSchema, ResetPasswordSchema
 from common.repository.user import UserRepository
 from common.repository.invoice import InvoiceRepository
+from routes.admin import admin_routes
 
-# Load local environment variables (resolves to backend/.env if run from backend/)
-load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"))
+# Load local environment variables
+load_dotenv(os.path.join(parent_dir, ".env"))
 
 # Initialize Database Client
 db.init_db()
@@ -35,6 +42,7 @@ user_repo = UserRepository()
 invoice_repo = InvoiceRepository()
 
 app = FastAPI(title="Slip Vault API (Uploader/API Service)", version="1.0.0")
+
 origins = [
     "https://slip-vault.com",
     "https://www.slip-vault.com",
@@ -45,9 +53,6 @@ origins = [
     "http://localhost:8001",
 ]
 
-# Import routes
-from routes.admin import router as admin_router
-
 # Enable CORS for frontend integration
 app.add_middleware(
     CORSMiddleware,
@@ -57,7 +62,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(admin_router)
+app.include_router(admin_routes)
 
 async def get_current_user(authorization: Optional[str] = Header(None)) -> str:
     """Validates JWT token and extracts the userId (sub)"""
@@ -126,6 +131,39 @@ async def login_user(req: UserAuthSchema):
         "token": token
     }
 
+@app.post("/api/auth/forgot-password")
+async def forgot_password(req: ForgotPasswordSchema, request: Request):
+    user = user_repo.get_by_email(req.email)
+    if user:
+        reset_token = create_reset_token(user["id"], user["email"])
+        origin = request.headers.get("origin") or "http://localhost:3000"
+        reset_url = f"{origin}/#/reset-password?token={reset_token}"
+        send_password_reset_email(user["email"], reset_url)
+    
+    return {
+        "status": "success",
+        "message": "If that email address is registered, a password reset link has been sent."
+    }
+
+@app.post("/api/auth/reset-password")
+async def reset_password(req: ResetPasswordSchema):
+    payload = verify_reset_token(req.token)
+    if not payload or "sub" not in payload:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token."
+        )
+    
+    user_id = payload["sub"]
+    pwd_hash = hash_password(req.newPassword)
+    
+    user_repo.collection.document(user_id).update({"passwordHash": pwd_hash})
+    
+    return {
+        "status": "success",
+        "message": "Password successfully updated. You may now log in with your new password."
+    }
+
 # =====================================================================
 # Invoices Endpoints (Authenticated)
 # =====================================================================
@@ -140,86 +178,66 @@ async def get_invoices(current_user: str = Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Database error: {str(e)}"
+            detail=f"Database query error: {str(e)}"
         )
 
-@app.post("/api/invoices", response_model=InvoiceModel)
-async def create_invoice(invoice: InvoiceModel, current_user: str = Depends(get_current_user)):
-    try:
-        invoice_dict = invoice.model_dump()
-        invoice_dict["userId"] = current_user  # Enforce current user ownership
-        invoice_repo.save(invoice_dict)
-        return invoice_dict
-    except Exception as e:
+@app.get("/api/invoices/{invoice_id}", response_model=InvoiceModel)
+async def get_invoice_by_id(invoice_id: str, current_user: str = Depends(get_current_user)):
+    inv = invoice_repo.get_by_id(invoice_id)
+    if not inv or inv.get("userId") != current_user:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to save invoice: {str(e)}"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invoice not found"
         )
+    if inv.get("scannedImage"):
+        inv["scannedImage"] = get_storage_provider().get_signed_url(inv["scannedImage"])
+    return inv
+
+@app.post("/api/invoices", response_model=InvoiceModel, status_code=status.HTTP_202_ACCEPTED)
+async def upload_invoice(req: ProcessInvoiceRequest, current_user: str = Depends(get_current_user)):
+    invoice_id = str(uuid.uuid4())[:8]
+    
+    stored_path = get_storage_provider().save_bytes(
+        file_bytes=req.image_bytes,
+        user_id=current_user,
+        invoice_id=invoice_id
+    )
+
+    created_at = int(datetime.datetime.now().timestamp() * 1000)
+
+    initial_invoice = {
+        "id": invoice_id,
+        "userId": current_user,
+        "storeName": "Processing...",
+        "totalAmount": 0.0,
+        "date": datetime.datetime.now().strftime("%Y-%m-%d"),
+        "time": "",
+        "items": [],
+        "scannedImage": stored_path,
+        "status": "PROCESSING",
+        "createdAt": created_at,
+        "currency": "₪",
+        "type": "INVOICE"
+    }
+
+    invoice_repo.save(initial_invoice)
+
+    get_messaging_provider().publish_task({
+        "invoice_id": invoice_id,
+        "user_id": current_user,
+        "image_path": stored_path
+    })
+
+    initial_invoice["scannedImage"] = get_storage_provider().get_signed_url(stored_path)
+    return initial_invoice
 
 @app.delete("/api/invoices/{invoice_id}")
 async def delete_invoice(invoice_id: str, current_user: str = Depends(get_current_user)):
-    try:
-        inv = invoice_repo.get_by_id(invoice_id)
-        if not inv or inv.get("userId") != current_user:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You do not have permission to delete this invoice."
-            )
-        invoice_repo.delete(invoice_id)
-        return {"status": "success", "message": f"Invoice {invoice_id} deleted."}
-    except HTTPException as he:
-        raise he
-    except Exception as e:
+    inv = invoice_repo.get_by_id(invoice_id)
+    if not inv or inv.get("userId") != current_user:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete invoice: {str(e)}"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invoice not found"
         )
-
-@app.post("/api/process-invoice")
-async def process_invoice(req: ProcessInvoiceRequest, current_user: str = Depends(get_current_user)):
-    try:
-        # 1. Get or generate unique invoice identifier
-        invoice_id = req.id or str(uuid.uuid4())
-        
-        # 2. Extract user ID from JWT
-        user_id = current_user
-        now = datetime.datetime.now()
-        timestamp_str = now.strftime("%d-%m-%Y-%H%M%S")
-
-        # Upload image to active storage provider (structured under GCS path)
-        storage_url = get_storage_provider().upload_image(
-            base64_image=req.image,
-            file_name=invoice_id,
-            user_id=user_id,
-            timestamp_str=timestamp_str,
-            store_name="pending"
-        )
-        
-        # 3. Create placeholder record with status 'PROCESSING'
-        invoice_repo.create_pending(invoice_id, storage_url, user_id)
-        
-        # 4. Dispatch processing task with multi-tenant meta parameters
-        task_payload = {
-            "id": invoice_id,
-            "gcs_url": storage_url,
-            "userId": user_id,
-            "timestamp_str": timestamp_str
-        }
-        get_messaging_provider().publish_message(task_payload)
-        
-        # Return pending invoice state immediately
-        return {
-            "id": invoice_id,
-            "status": "PROCESSING",
-            "scannedImage": get_storage_provider().get_signed_url(storage_url)
-        }
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to initiate invoice processing: {str(e)}"
-        )
-
-@app.get("/")
-async def root():
-    return {"message": "Slip Vault API Service (Uploader) is running."}
+    invoice_repo.delete(invoice_id)
+    return {"status": "success", "message": f"Deleted invoice {invoice_id}"}

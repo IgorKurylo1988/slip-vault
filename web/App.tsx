@@ -65,6 +65,84 @@ const App: React.FC = () => {
   const [isAdminMode, setIsAdminMode] = useState(false);
   const isAdmin = Boolean(userEmail && (userEmail.toLowerCase().endsWith('@slip-vault.com') || userEmail.toLowerCase().includes('admin')));
 
+  // Password reset states
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+  const [forgotPasswordMsg, setForgotPasswordMsg] = useState<string | null>(null);
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
+
+  const [resetToken, setResetToken] = useState<string | null>(null);
+  const [newResetPassword, setNewResetPassword] = useState("");
+  const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
+  const [resetPasswordMsg, setResetPasswordMsg] = useState<string | null>(null);
+
+  // Check URL hash for password reset token
+  useEffect(() => {
+    const checkResetToken = () => {
+      const hash = window.location.hash || '';
+      if (hash.includes('reset-password') && hash.includes('token=')) {
+        const tokenMatch = hash.match(/token=([^&]+)/);
+        if (tokenMatch && tokenMatch[1]) {
+          setResetToken(tokenMatch[1]);
+        }
+      }
+    };
+    checkResetToken();
+    window.addEventListener('hashchange', checkResetToken);
+    return () => window.removeEventListener('hashchange', checkResetToken);
+  }, []);
+
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotPasswordLoading(true);
+    setForgotPasswordMsg(null);
+    try {
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const apiUrl = isLocal ? 'http://localhost:8000/api/auth/forgot-password' : 'https://api.slip-vault.com/api/auth/forgot-password';
+      const res = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotPasswordEmail })
+      });
+      const data = await res.json();
+      setForgotPasswordMsg(data.message || 'Reset link requested.');
+    } catch {
+      setForgotPasswordMsg('Error requesting password reset link.');
+    } finally {
+      setForgotPasswordLoading(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetToken || !newResetPassword) return;
+    setResetPasswordLoading(true);
+    setResetPasswordMsg(null);
+    try {
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const apiUrl = isLocal ? 'http://localhost:8000/api/auth/reset-password' : 'https://api.slip-vault.com/api/auth/reset-password';
+      const res = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: resetToken, newPassword: newResetPassword })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setResetPasswordMsg('Password updated successfully! You can now log in.');
+        setTimeout(() => {
+          setResetToken(null);
+          window.location.hash = '';
+        }, 2000);
+      } else {
+        setResetPasswordMsg(data.detail || 'Reset failed.');
+      }
+    } catch {
+      setResetPasswordMsg('Failed to update password.');
+    } finally {
+      setResetPasswordLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
@@ -491,6 +569,20 @@ const App: React.FC = () => {
                 className="w-full h-11 px-3.5 rounded-[10px] border border-[#334155] bg-[#1E293B] text-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-[#60A5FA] text-sm"
                 required
               />
+              {!isRegistering && (
+                <div className="flex justify-end mt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotPasswordEmail(authEmail);
+                      setIsForgotPasswordOpen(true);
+                    }}
+                    className="text-xs font-semibold text-[#60A5FA] hover:underline"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
+              )}
             </div>
             
             <Button 
@@ -543,6 +635,108 @@ const App: React.FC = () => {
               >
                 Okay
               </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Forgot Password Modal */}
+        {isForgotPasswordOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+            <div className="bg-[#111827] rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-[#334155] relative text-[#F8FAFC]">
+              <button 
+                onClick={() => { setIsForgotPasswordOpen(false); setForgotPasswordMsg(null); }}
+                className="w-[44px] h-[44px] absolute top-4 right-4 rounded-full text-[#94A3B8] hover:text-[#F8FAFC] flex items-center justify-center"
+              >
+                <X size={18} />
+              </button>
+
+              <h3 className="text-lg font-bold mb-2 text-[#F8FAFC]">Reset Password</h3>
+              <p className="text-xs text-[#94A3B8] mb-4">
+                Enter your registered email address and we'll send you a password reset link.
+              </p>
+
+              {forgotPasswordMsg ? (
+                <div className="space-y-4">
+                  <div className="p-3 bg-blue-500/10 border border-blue-500/30 text-blue-400 rounded-xl text-xs leading-relaxed">
+                    {forgotPasswordMsg}
+                  </div>
+                  <Button 
+                    onClick={() => { setIsForgotPasswordOpen(false); setForgotPasswordMsg(null); }}
+                    variant="primary" 
+                    fullWidth 
+                    className="min-h-[44px]"
+                  >
+                    Done
+                  </Button>
+                </div>
+              ) : (
+                <form onSubmit={handleForgotPasswordSubmit} className="space-y-4">
+                  <div>
+                    <label className="text-xs font-semibold text-[#94A3B8] uppercase block mb-1">Email Address</label>
+                    <input 
+                      type="email"
+                      value={forgotPasswordEmail}
+                      onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      className="w-full h-11 px-3.5 rounded-[10px] border border-[#334155] bg-[#1E293B] text-[#CBD5E1] text-sm focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
+                      required
+                    />
+                  </div>
+                  <Button 
+                    type="submit" 
+                    variant="primary" 
+                    fullWidth 
+                    className="min-h-[44px]"
+                    disabled={forgotPasswordLoading}
+                    icon={forgotPasswordLoading ? <Loader2 className="animate-spin" /> : undefined}
+                  >
+                    {forgotPasswordLoading ? 'Sending...' : 'Send Reset Link'}
+                  </Button>
+                </form>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Reset Password Form Modal (Triggered via Reset Token Link) */}
+        {resetToken && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
+            <div className="bg-[#111827] rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-[#334155] relative text-[#F8FAFC]">
+              <h3 className="text-lg font-bold mb-2 text-[#F8FAFC]">Set New Password</h3>
+              <p className="text-xs text-[#94A3B8] mb-4">
+                Please enter a new password for your Slip Vault account.
+              </p>
+
+              {resetPasswordMsg ? (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs leading-relaxed text-center font-semibold">
+                  {resetPasswordMsg}
+                </div>
+              ) : (
+                <form onSubmit={handleResetPasswordSubmit} className="space-y-4">
+                  <div>
+                    <label className="text-xs font-semibold text-[#94A3B8] uppercase block mb-1">New Password</label>
+                    <input 
+                      type="password"
+                      value={newResetPassword}
+                      onChange={(e) => setNewResetPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full h-11 px-3.5 rounded-[10px] border border-[#334155] bg-[#1E293B] text-[#CBD5E1] text-sm focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                  <Button 
+                    type="submit" 
+                    variant="primary" 
+                    fullWidth 
+                    className="min-h-[44px]"
+                    disabled={resetPasswordLoading}
+                    icon={resetPasswordLoading ? <Loader2 className="animate-spin" /> : undefined}
+                  >
+                    {resetPasswordLoading ? 'Updating Password...' : 'Update Password'}
+                  </Button>
+                </form>
+              )}
             </div>
           </div>
         )}
