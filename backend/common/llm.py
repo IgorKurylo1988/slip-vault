@@ -160,8 +160,8 @@ def process_invoice_image(image_url: str) -> dict:
             extracted_data.get("storeAddress")
         )
         
-        # Reason: Check for mismatches
-        if not math_check["is_matching"] and extracted_data.get("type") != "INVALID":
+        # Reason: Check for mismatches (skip for CREDIT_INVOICE documents since credit notes list original items alongside specific refund totals)
+        if not math_check["is_matching"] and extracted_data.get("type") not in ("INVALID", "CREDIT_INVOICE"):
             validation_errors.append(
                 f"Math total mismatch! Extracted total was {extracted_data.get('totalAmount')}, "
                 f"but sum of items ({math_check['calculated_subtotal']}) + tax ({extracted_data.get('tax') or 0.0}) calculated to {math_check['calculated_total']}."

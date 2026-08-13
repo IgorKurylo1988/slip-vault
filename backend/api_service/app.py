@@ -70,6 +70,29 @@ async def get_current_user(authorization: Optional[str] = Header(None)) -> str:
         )
     return payload["sub"]
 
+async def get_admin_user(authorization: Optional[str] = Header(None)) -> dict:
+    """Validates JWT token and verifies admin authorization"""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing authentication token"
+        )
+    token = authorization.split(" ")[1]
+    payload = decode_jwt_token(token)
+    if not payload or "sub" not in payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token or token expired"
+        )
+    email = payload.get("email", "")
+    is_admin = email.endswith("@slip-vault.com") or "admin" in email.lower() or payload.get("role") == "admin"
+    if not is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required to execute this management action."
+        )
+    return payload
+
 # =====================================================================
 # Auth Endpoints
 # =====================================================================
@@ -165,6 +188,42 @@ async def delete_invoice(invoice_id: str, current_user: str = Depends(get_curren
             )
         invoice_repo.delete(invoice_id)
         return {"status": "success", "message": f"Invoice {invoice_id} deleted."}
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete invoice: {str(e)}"
+        )
+
+# =====================================================================
+# Admin Board Endpoints (Admin Only System Management)
+# =====================================================================
+@app.get("/api/admin/invoices", response_model=List[InvoiceModel])
+async def get_admin_invoices(admin_payload: dict = Depends(get_admin_user)):
+    try:
+        invoices = invoice_repo.get_all_system_invoices()
+        for inv in invoices:
+            if inv.get("scannedImage"):
+                inv["scannedImage"] = get_storage_provider().get_signed_url(inv["scannedImage"])
+        return invoices
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {str(e)}"
+        )
+
+@app.delete("/api/admin/invoices/{invoice_id}")
+async def delete_admin_invoice(invoice_id: str, admin_payload: dict = Depends(get_admin_user)):
+    try:
+        inv = invoice_repo.get_by_id(invoice_id)
+        if not inv:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Invoice not found in system database."
+            )
+        invoice_repo.delete(invoice_id)
+        return {"status": "success", "message": f"Admin deleted invoice {invoice_id} system-wide."}
     except HTTPException as he:
         raise he
     except Exception as e:

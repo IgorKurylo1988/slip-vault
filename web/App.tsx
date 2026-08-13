@@ -7,7 +7,8 @@ import CameraCapture from './components/CameraCapture';
 import ReceiptView from './components/ReceiptView';
 import Dashboard from './components/Dashboard';
 import Button from './components/Button';
-import { Loader2, Search, X, CreditCard, Receipt, FileText, Sun, Moon, User, ChevronRight, ArrowUpDown, ChevronUp, ChevronDown, Upload } from 'lucide-react';
+import AdminBoard from './components/AdminBoard';
+import { Loader2, Search, X, CreditCard, Receipt, FileText, Sun, Moon, User, ChevronRight, ArrowUpDown, ChevronUp, ChevronDown, Upload, ShieldAlert } from 'lucide-react';
 
 type SortField = 'storeName' | 'invoiceNumber' | 'date' | 'type' | 'totalAmount';
 type SortOrder = 'asc' | 'desc';
@@ -58,8 +59,10 @@ const App: React.FC = () => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
 
-  // Account modal state
+  // Account modal & Admin mode state
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+  const [isAdminMode, setIsAdminMode] = useState(false);
+  const isAdmin = userEmail.endsWith('@slip-vault.com') || userEmail.toLowerCase().includes('admin');
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -474,81 +477,95 @@ const App: React.FC = () => {
   return (
     <div className="h-full w-full bg-[#F8FAFC] dark:bg-[#070B14] flex overflow-hidden">
       
-      {(state === AppState.IDLE || state === AppState.VIEWING) && (
-        <div className="flex-1 flex h-full w-full overflow-hidden">
-          {/* Left Panel: Sidebar */}
-          <div className={`h-full w-full md:w-[320px] md:shrink-0 ${state === AppState.IDLE ? 'block' : 'hidden md:block'} flex flex-col`}>
-            <Dashboard 
-              invoices={uniqueInvoices}
-              activeTasks={activeTasks}
-              isLoading={isLoadingInvoices}
-              onUploadClick={handleFileUpload}
-              onInvoiceClick={handleViewInvoice}
-              AppLogo={AppLogo}
-              filter={filter}
-              setFilter={setFilter}
-              userEmail={userEmail}
-              userName={userNameDisplay}
-              onOpenAccountModal={() => setIsAccountModalOpen(true)}
-              onLogout={handleLogout}
-            />
-          </div>
+      {isAdminMode ? (
+        <AdminBoard onClose={() => setIsAdminMode(false)} onViewInvoice={handleViewInvoice} />
+      ) : (
+        (state === AppState.IDLE || state === AppState.VIEWING) && (
+          <div className="flex-1 flex h-full w-full overflow-hidden">
+            {/* Left Panel: Sidebar */}
+            <div className={`h-full w-full md:w-[320px] md:shrink-0 ${state === AppState.IDLE ? 'block' : 'hidden md:block'} flex flex-col`}>
+              <Dashboard 
+                invoices={uniqueInvoices}
+                activeTasks={activeTasks}
+                isLoading={isLoadingInvoices}
+                onUploadClick={handleFileUpload}
+                onInvoiceClick={handleViewInvoice}
+                AppLogo={AppLogo}
+                filter={filter}
+                setFilter={setFilter}
+                userEmail={userEmail}
+                userName={userNameDisplay}
+                onOpenAccountModal={() => setIsAccountModalOpen(true)}
+                onLogout={handleLogout}
+              />
+            </div>
 
-          {/* Center/Right Panel: Main Receipts Area */}
-          <div className="h-full flex-1 bg-[#F8FAFC] dark:bg-[#070B14] flex flex-col overflow-hidden">
-            {/* Header: Page Title "Receipts", Single Global Search, Account & Theme Buttons */}
-            <header className="w-full bg-white dark:bg-[#111827] border-b border-[#DCE3EC] dark:border-[#334155] py-3.5 px-4 md:px-6 shadow-sm shrink-0 flex items-center justify-between gap-3">
-              <h1 className="text-lg md:text-xl font-bold text-[#172033] dark:text-[#F8FAFC] shrink-0">Receipts</h1>
-              
-              <div className="flex items-center gap-2 md:gap-3 flex-1 justify-end">
-                {/* Single Global Search in Header */}
-                <div className="relative w-full max-w-[240px] sm:max-w-xs md:max-w-sm">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#64748B] dark:text-[#94A3B8]" size={18} aria-hidden="true" />
-                  <input 
-                    type="text"
-                    placeholder="Search stores, date, invoice #..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    aria-label="Global search receipts"
-                    className="w-full h-11 pl-10 pr-10 bg-[#F1F5F9] dark:bg-[#1E293B] border border-[#DCE3EC] dark:border-[#334155] rounded-[10px] text-xs text-[#172033] dark:text-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-[#60A5FA] transition-all"
-                  />
-                  {searchQuery && (
-                    <button 
-                      onClick={() => setSearchQuery('')}
-                      aria-label="Clear search query"
-                      className="w-[44px] h-[44px] absolute right-0 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#172033] dark:text-[#94A3B8] dark:hover:text-[#F8FAFC] flex items-center justify-center"
-                    >
-                      <X size={16} />
-                    </button>
-                  )}
-                </div>
-
-                {/* Account Button */}
-                <button 
-                  onClick={() => setIsAccountModalOpen(true)}
-                  aria-label="Account Settings"
-                  className="min-h-[44px] min-w-[44px] flex items-center gap-2 px-3 py-2 rounded-[10px] bg-[#F1F5F9] dark:bg-[#1E293B] border border-[#DCE3EC] dark:border-[#334155] hover:border-[#2563EB] transition-all focus:outline-none focus:ring-2 focus:ring-[#60A5FA] shrink-0"
-                  title="Account Settings"
-                >
-                  <div className="w-7 h-7 rounded-full bg-[#2563EB] text-white flex items-center justify-center font-bold text-xs shrink-0">
-                    <User size={14} />
+            {/* Center/Right Panel: Main Receipts Area */}
+            <div className="h-full flex-1 bg-[#F8FAFC] dark:bg-[#070B14] flex flex-col overflow-hidden">
+              {/* Header: Page Title "Receipts", Single Global Search, Admin, Account & Theme Buttons */}
+              <header className="w-full bg-white dark:bg-[#111827] border-b border-[#DCE3EC] dark:border-[#334155] py-3.5 px-4 md:px-6 shadow-sm shrink-0 flex items-center justify-between gap-3">
+                <h1 className="text-lg md:text-xl font-bold text-[#172033] dark:text-[#F8FAFC] shrink-0">Receipts</h1>
+                
+                <div className="flex items-center gap-2 md:gap-3 flex-1 justify-end">
+                  {/* Single Global Search in Header */}
+                  <div className="relative w-full max-w-[240px] sm:max-w-xs md:max-w-sm">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#64748B] dark:text-[#94A3B8]" size={18} aria-hidden="true" />
+                    <input 
+                      type="text"
+                      placeholder="Search stores, date, invoice #..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      aria-label="Global search receipts"
+                      className="w-full h-11 pl-10 pr-10 bg-[#F1F5F9] dark:bg-[#1E293B] border border-[#DCE3EC] dark:border-[#334155] rounded-[10px] text-xs text-[#172033] dark:text-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-[#60A5FA] transition-all"
+                    />
+                    {searchQuery && (
+                      <button 
+                        onClick={() => setSearchQuery('')}
+                        aria-label="Clear search query"
+                        className="w-[44px] h-[44px] absolute right-0 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#172033] dark:text-[#94A3B8] dark:hover:text-[#F8FAFC] flex items-center justify-center"
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
                   </div>
-                  <span className="text-xs font-semibold text-[#172033] dark:text-[#F8FAFC] hidden sm:inline truncate max-w-[100px]">
-                    {userNameDisplay}
-                  </span>
-                </button>
 
-                {/* Theme Toggle Button - 44x44px */}
-                <button
-                  onClick={toggleTheme}
-                  aria-label={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-                  className="w-[44px] h-[44px] min-w-[44px] min-h-[44px] rounded-[10px] bg-[#F1F5F9] hover:bg-[#DCE3EC] dark:bg-[#1E293B] dark:hover:bg-[#334155] text-[#172033] dark:text-[#CBD5E1] transition-colors shrink-0 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
-                  title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-                >
-                  {theme === 'dark' ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} className="text-indigo-600" />}
-                </button>
-              </div>
-            </header>
+                  {/* Admin Board Button */}
+                  <button 
+                    onClick={() => setIsAdminMode(true)}
+                    aria-label="Open Admin Board"
+                    className="min-h-[44px] flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-[#F59E0B]/10 hover:bg-[#F59E0B]/20 text-[#F59E0B] font-semibold text-xs border border-[#F59E0B]/30 transition-all focus:outline-none focus:ring-2 focus:ring-[#60A5FA] shrink-0"
+                    title="Open System Admin Board"
+                  >
+                    <ShieldAlert size={16} />
+                    <span className="hidden md:inline">Admin Board</span>
+                  </button>
+
+                  {/* Account Button */}
+                  <button 
+                    onClick={() => setIsAccountModalOpen(true)}
+                    aria-label="Account Settings"
+                    className="min-h-[44px] min-w-[44px] flex items-center gap-2 px-3 py-2 rounded-[10px] bg-[#F1F5F9] dark:bg-[#1E293B] border border-[#DCE3EC] dark:border-[#334155] hover:border-[#2563EB] transition-all focus:outline-none focus:ring-2 focus:ring-[#60A5FA] shrink-0"
+                    title="Account Settings"
+                  >
+                    <div className="w-7 h-7 rounded-full bg-[#2563EB] text-white flex items-center justify-center font-bold text-xs shrink-0">
+                      <User size={14} />
+                    </div>
+                    <span className="text-xs font-semibold text-[#172033] dark:text-[#F8FAFC] hidden sm:inline truncate max-w-[100px]">
+                      {userNameDisplay}
+                    </span>
+                  </button>
+
+                  {/* Theme Toggle Button - 44x44px */}
+                  <button
+                    onClick={toggleTheme}
+                    aria-label={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                    className="w-[44px] h-[44px] min-w-[44px] min-h-[44px] rounded-[10px] bg-[#F1F5F9] hover:bg-[#DCE3EC] dark:bg-[#1E293B] dark:hover:bg-[#334155] text-[#172033] dark:text-[#CBD5E1] transition-colors shrink-0 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
+                    title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                  >
+                    {theme === 'dark' ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} className="text-indigo-600" />}
+                  </button>
+                </div>
+              </header>
 
             {/* Scrollable Content Area */}
             <div className="flex-1 overflow-y-auto p-4 md:p-6 no-scrollbar safe-container">
@@ -806,7 +823,7 @@ const App: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
+      ))}
 
       {/* SCANNING STATE */}
       {state === AppState.SCANNING && (

@@ -16,8 +16,8 @@ EXTRACT THESE FIELDS:
 - time: HH:MM.
 - invoiceNumber: ID of the document (Asmachta, Heshbonit, Invoice #).
 - currency: (₪, $, €, etc.). Default to ₪ if Israeli store.
-- items: List each line item with its SKU (MKT/Code), name, quantity, and price.
-- totalAmount: The final amount. For credit invoices, this is the amount to be returned to the customer.
+- items: List each line item credited or returned with its SKU (MKT/Code), name, quantity, and price.
+- totalAmount: The final credit/refund amount to be credited or returned to the customer (e.g., 'סכום זיכוי', 'Credit Total', 'סה"כ זיכוי', 'Total Refund'). ONLY read the explicit credit amount from the uploaded doc. Do NOT extract or sum the original purchase total if both original purchase and credit lines appear on the document.
 - rejectionReason: If the document is 'INVALID' or missing a total amount, explain why in one short sentence.
 
 Be extremely precise with SKU/MKT codes as they are often used for returns.

@@ -46,6 +46,16 @@ class InvoiceRepository:
             logger.error(f"Failed to get all invoices for user {user_id}: {e}")
             raise e
 
+    def get_all_system_invoices(self) -> List[dict]:
+        try:
+            docs = self.collection.stream()
+            results = [doc.to_dict() for doc in docs if doc.to_dict().get("status") == "COMPLETED"]
+            results.sort(key=lambda x: x.get("createdAt", 0), reverse=True)
+            return results
+        except Exception as e:
+            logger.error(f"Failed to get all system invoices: {e}")
+            raise e
+
     def save(self, invoice_dict: dict):
         try:
             doc_ref = self.collection.document(invoice_dict["id"])
