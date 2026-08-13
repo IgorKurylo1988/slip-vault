@@ -94,8 +94,8 @@ const App: React.FC = () => {
     const endpoint = isRegistering ? '/api/auth/register' : '/api/auth/login';
     
     const payload = isRegistering 
-      ? { email: authEmail, password: authPassword, firstName: authFirstName, lastName: authLastName }
-      : { email: authEmail, password: authPassword };
+      ? { email: authEmail.trim(), password: authPassword, firstName: authFirstName || "", lastName: authLastName || "" }
+      : { email: authEmail.trim(), password: authPassword };
 
     try {
       const response = await fetch(`${baseUrl}${endpoint}`, {
