@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { AppState, InvoiceData, AVATAR_OPTIONS } from './types';
+import { AppState, InvoiceData } from './types';
 import { processInvoiceImage } from './services/invoiceService';
 import { fetchInvoices, saveInvoiceToStorage, deleteInvoiceFromStorage } from './services/storageService';
 import { requestNotificationPermission, pollInvoiceStatus } from './services/notificationService';
@@ -7,7 +7,17 @@ import CameraCapture from './components/CameraCapture';
 import ReceiptView from './components/ReceiptView';
 import Dashboard from './components/Dashboard';
 import Button from './components/Button';
-import { Loader2, Search, X, CreditCard, Receipt, FileText, Eye, Sun, Moon, User } from 'lucide-react';
+import { Loader2, Search, X, CreditCard, Receipt, FileText, Sun, Moon, User, ChevronRight, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
+
+type SortField = 'storeName' | 'invoiceNumber' | 'date' | 'type' | 'totalAmount';
+type SortOrder = 'asc' | 'desc';
+
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+};
 
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>(AppState.IDLE);
@@ -18,9 +28,13 @@ const App: React.FC = () => {
   const [dialogMessage, setDialogMessage] = useState<{ title: string; message: string; type: 'error' | 'info' } | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<{ [key: string]: boolean }>({});
   
-  // Lifted filters/search state
+  // Single global search and filter state
   const [filter, setFilter] = useState<'ALL' | 'INVOICE' | 'CREDIT_INVOICE'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Table sorting state
+  const [sortField, setSortField] = useState<SortField>('date');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
   // Theme state
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -35,7 +49,6 @@ const App: React.FC = () => {
   const [userEmail, setUserEmail] = useState<string>(() => localStorage.getItem('userEmail') || "");
   const [userFirstName, setUserFirstName] = useState<string>(() => localStorage.getItem('userFirstName') || "");
   const [userLastName, setUserLastName] = useState<string>(() => localStorage.getItem('userLastName') || "");
-  const [userAvatar, setUserAvatar] = useState<string>(() => localStorage.getItem('userAvatar') || "1");
 
   // Authentication UI state
   const [authEmail, setAuthEmail] = useState("");
@@ -45,7 +58,7 @@ const App: React.FC = () => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
 
-  // Account & Avatar modal state
+  // Account modal state
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
 
   useEffect(() => {
@@ -59,11 +72,6 @@ const App: React.FC = () => {
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
-  };
-
-  const handleSelectAvatar = (avatarId: string) => {
-    setUserAvatar(avatarId);
-    localStorage.setItem('userAvatar', avatarId);
   };
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -83,7 +91,7 @@ const App: React.FC = () => {
     const endpoint = isRegistering ? '/api/auth/register' : '/api/auth/login';
     
     const payload = isRegistering 
-      ? { email: authEmail, password: authPassword, firstName: authFirstName, lastName: authLastName, avatar: userAvatar }
+      ? { email: authEmail, password: authPassword, firstName: authFirstName, lastName: authLastName }
       : { email: authEmail, password: authPassword };
 
     try {
@@ -103,14 +111,12 @@ const App: React.FC = () => {
       localStorage.setItem('userEmail', resData.email);
       localStorage.setItem('userFirstName', resData.firstName || authFirstName || "");
       localStorage.setItem('userLastName', resData.lastName || authLastName || "");
-      localStorage.setItem('userAvatar', resData.avatar || userAvatar || "1");
       
       setToken(resData.token);
       setUserId(resData.userId);
       setUserEmail(resData.email);
       setUserFirstName(resData.firstName || authFirstName || "");
       setUserLastName(resData.lastName || authLastName || "");
-      setUserAvatar(resData.avatar || userAvatar || "1");
 
       setAuthPassword("");
       setAuthEmail("");
@@ -133,13 +139,11 @@ const App: React.FC = () => {
     localStorage.removeItem('userEmail');
     localStorage.removeItem('userFirstName');
     localStorage.removeItem('userLastName');
-    localStorage.removeItem('userAvatar');
     setToken(null);
     setUserId("");
     setUserEmail("");
     setUserFirstName("");
     setUserLastName("");
-    setUserAvatar("1");
     setInvoices([]);
     setIsAccountModalOpen(false);
   };
@@ -149,7 +153,6 @@ const App: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Load invoices on mount and request notification permissions
   useEffect(() => {
     requestNotificationPermission();
     if (!token) return;
@@ -169,10 +172,7 @@ const App: React.FC = () => {
   }, [token]);
 
   const handleCapture = async (base64Image: string) => {
-    // Navigate back to IDLE so the user can continue using the dashboard
     setState(AppState.IDLE);
-    
-    // Create a temporary task ID to show progress until we get the actual ID from API
     const tempTaskId = `uploading-${Date.now()}`;
     setActiveTasks(prev => [...prev, { id: tempTaskId, name: "Uploading receipt..." }]);
     
@@ -180,16 +180,12 @@ const App: React.FC = () => {
       const pendingData = await processInvoiceImage(base64Image, userId);
       const invoiceId = pendingData.id;
       
-      // Swap the temp ID for the actual invoice ID
       setActiveTasks(prev => prev.map(t => t.id === tempTaskId ? { id: invoiceId, name: "Processing..." } : t));
       
-      // Poll status of the invoice ID in the background
       pollInvoiceStatus(
         invoiceId,
         (completedData) => {
-          // Remove from active tasks
           setActiveTasks(prev => prev.filter(t => t.id !== invoiceId));
-          // Prepend the new invoice to history list
           setInvoices(prev => [completedData, ...prev.filter(i => i.id !== completedData.id)]);
         },
         (errorReason) => {
@@ -212,13 +208,12 @@ const App: React.FC = () => {
     }
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement> | { target: { files: FileList | null } }) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
         const result = reader.result as string;
-        // Remove data:image/jpeg;base64, prefix
         const base64 = result.split(',')[1];
         handleCapture(base64);
       };
@@ -230,7 +225,6 @@ const App: React.FC = () => {
     setIsSaving(true);
     try {
       const saved = await saveInvoiceToStorage(data);
-      // Optimistically update list or re-fetch
       setInvoices(prev => [saved, ...prev.filter(i => i.id !== saved.id)]); 
       setInvoiceData(null);
       setState(AppState.IDLE);
@@ -266,7 +260,7 @@ const App: React.FC = () => {
     setState(AppState.IDLE);
   };
 
-  // Compute metrics/stats for dashboard cards
+  // Metrics calculation
   const stats = useMemo(() => {
     const credits = invoices.filter(i => i.type === 'CREDIT_INVOICE');
     const totalCredits = credits.reduce((acc, curr) => acc + curr.totalAmount, 0);
@@ -283,17 +277,27 @@ const App: React.FC = () => {
     };
   }, [invoices]);
 
-  // Filtered invoices for the desktop center panel table
+  // Filtered invoices
   const desktopFilteredInvoices = useMemo(() => {
     return invoices.filter(inv => {
       const matchesFilter = filter === 'ALL' || inv.type === filter;
-      const matchesSearch = inv.storeName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                           inv.invoiceNumber?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = (inv.storeName || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+                           (inv.invoiceNumber || '').toLowerCase().includes(searchQuery.toLowerCase());
       return matchesFilter && matchesSearch;
     });
   }, [invoices, filter, searchQuery]);
 
-  // Group invoices by invoiceNumber to build a tree view
+  // Handle column sort clicks
+  const handleSortClick = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('desc');
+    }
+  };
+
+  // Group & sort invoices for tree view
   const groupedInvoices = useMemo(() => {
     const groups: { [key: string]: InvoiceData[] } = {};
     const singletons: InvoiceData[] = [];
@@ -329,126 +333,99 @@ const App: React.FC = () => {
       tree.push({ parent: inv, children: [] });
     });
     
-    // Sort tree by parent date descending
-    tree.sort((a, b) => (b.parent.createdAt || 0) - (a.parent.createdAt || 0));
+    // Sort tree according to active sortField and sortOrder
+    tree.sort((a, b) => {
+      let aVal: any = a.parent[sortField] || '';
+      let bVal: any = b.parent[sortField] || '';
+      
+      if (sortField === 'date') {
+        aVal = a.parent.createdAt || new Date(a.parent.date).getTime() || 0;
+        bVal = b.parent.createdAt || new Date(b.parent.date).getTime() || 0;
+      } else if (sortField === 'totalAmount') {
+        aVal = a.parent.totalAmount;
+        bVal = b.parent.totalAmount;
+      } else if (typeof aVal === 'string') {
+        aVal = aVal.toLowerCase();
+        bVal = bVal.toLowerCase();
+      }
+      
+      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
     return tree;
-  }, [desktopFilteredInvoices]);
+  }, [desktopFilteredInvoices, sortField, sortOrder]);
 
-  // Shared Logo Component
+  // Brand Vault Logo Component
   const AppLogo = () => (
-    <div className="w-24 h-24 mb-6 relative rounded-[1.5rem] bg-gradient-to-tr from-emerald-500 to-green-400 shadow-[0_10px_30px_-5px_rgba(16,185,129,0.4)] flex items-center justify-center overflow-hidden border border-white/10 group shrink-0">
-      {/* Background Cloud Effect */}
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-20 h-16">
-         <div className="absolute top-0 left-2 w-12 h-12 bg-white/20 rounded-full blur-lg"></div>
-         <svg viewBox="0 0 24 24" fill="currentColor" className="text-white/20 w-full h-full transform scale-150">
-            <path d="M17.5,19c-3.037,0-5.5-2.463-5.5-5.5c0-1.4,0.52-2.686,1.385-3.664C12.802,8.73,12.232,8,11.5,8c-0.199,0-0.392,0.033-0.579,0.082C10.462,6.236,8.604,5,6.5,5C3.463,5,1,7.463,1,10.5c0,2.697,1.933,4.95,4.5,5.405V16.5c0,3.037,2.463,5.5,5.5,5.5c1.4,0,2.686-0.52,3.664-1.385C15.27,21.198,16.324,21.5,17.5,21.5c2.481,0,4.5-2.019,4.5-4.5S19.981,12.5,17.5,12.5c-0.199,0-0.392,0.033-0.579,0.082C16.462,11.236,14.604,10,12.5,10c-0.655,0-1.276,0.133-1.846,0.364C11.198,10.875,11.5,11.644,11.5,12.5c0,2.481-2.019,4.5-4.5,4.5c-0.655,0-1.276-0.133-1.846-0.364C5.698,17.161,6.564,17.5,7.5,17.5c1.4,0,2.686-0.52,3.664-1.385C11.77,17.198,12.824,17.5,14,17.5c2.697,0,4.95-1.933,5.405-4.5H19.5c1.103,0,2-0.897,2-2s-0.897-2-2-2S17.5,9.897,17.5,11V19z" />
-         </svg>
-      </div>
-      {/* Central Invoice Document */}
-      <div className="relative z-10 transform -rotate-6 bg-white p-1.5 rounded-lg shadow-lg w-12 h-14 flex flex-col gap-1 border-t border-white/50 border-b border-r border-slate-200">
-        <div className="flex justify-between items-center mb-0.5">
-           <div className="w-3 h-1 bg-[#1D4ED8] rounded-full"></div>
-           <div className="w-2 h-1 bg-slate-200 rounded-full"></div>
-        </div>
-        <div className="space-y-1 flex-1">
-           <div className="w-5 h-0.5 bg-slate-200 rounded-full"></div>
-           <div className="w-4 h-0.5 bg-slate-200 rounded-full"></div>
-        </div>
-        <div className="mt-auto w-full h-1 bg-blue-100 rounded-sm"></div>
-      </div>
-      {/* Search Lens */}
-      <div className="absolute z-20 bottom-5 right-5 transform translate-x-1 translate-y-1">
-         <Search size={28} strokeWidth={3} className="text-white drop-shadow-md" />
-         <div className="absolute top-[4px] left-[4px] w-[16px] h-[16px] bg-sky-200/20 rounded-full"></div>
-      </div>
+    <div className="w-10 h-10 rounded-[10px] bg-gradient-to-r from-[#2563EB] to-[#4F46E5] text-white flex items-center justify-center shadow-md shrink-0">
+      <Receipt size={22} aria-hidden="true" />
     </div>
   );
 
-  const currentAvatar = AVATAR_OPTIONS.find(a => a.id === userAvatar) || AVATAR_OPTIONS[0];
+  const userNameDisplay = userFirstName || userLastName ? `${userFirstName} ${userLastName}`.trim() : userEmail.split('@')[0];
 
   if (!token) {
     return (
-      <div className="dark w-full min-h-screen flex items-center justify-center p-4 bg-[#070B14] text-[#F8FAFC] transition-colors duration-300">
-        <div className="w-full max-w-md bg-[#111827] rounded-[2.5rem] p-8 shadow-2xl border border-[#334155] animate-in fade-in duration-300">
+      <div className="w-full min-h-screen flex items-center justify-center p-4 bg-[#070B14] text-[#F8FAFC]">
+        <div className="w-full max-w-md bg-[#111827] rounded-2xl p-8 shadow-2xl border border-[#334155]">
           <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 rounded-[1.25rem] bg-gradient-to-tr from-[#1D4ED8] to-[#4F46E5] shadow-[0_8px_24px_rgba(29,78,216,0.3)] flex items-center justify-center mb-4">
-              <Receipt className="text-white w-8 h-8" />
-            </div>
-            <h2 className="text-2xl font-black text-[#F8FAFC]">
-              {isRegistering ? "Join Slip Vault" : "Welcome Back"}
+            <AppLogo />
+            <h2 className="text-2xl font-black text-[#F8FAFC] mt-4">
+              {isRegistering ? "Join Receipt Vault" : "Welcome Back"}
             </h2>
-            <p className="text-sm text-[#94A3B8] mt-1">
-              {isRegistering ? "Create digitized credit account" : "Manage your digitized credit receipts"}
+            <p className="text-xs text-[#94A3B8] mt-1">
+              {isRegistering ? "Create your digitized receipt account" : "Manage your digitized receipts"}
             </p>
           </div>
           
           <form onSubmit={handleAuth} className="space-y-4">
             {isRegistering && (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider block mb-1.5 ml-1">First Name</label>
-                    <input 
-                      type="text" 
-                      value={authFirstName}
-                      onChange={(e) => setAuthFirstName(e.target.value)}
-                      placeholder="John"
-                      className="w-full h-12 px-4 rounded-xl border border-[#334155] bg-[#1E293B] text-[#CBD5E1] focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] text-sm transition-colors"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider block mb-1.5 ml-1">Last Name</label>
-                    <input 
-                      type="text" 
-                      value={authLastName}
-                      onChange={(e) => setAuthLastName(e.target.value)}
-                      placeholder="Doe"
-                      className="w-full h-12 px-4 rounded-xl border border-[#334155] bg-[#1E293B] text-[#CBD5E1] focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] text-sm transition-colors"
-                      required
-                    />
-                  </div>
-                </div>
-
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider block mb-1.5 ml-1">Select Avatar (9 Options)</label>
-                  <div className="grid grid-cols-5 gap-2">
-                    {AVATAR_OPTIONS.map((opt) => (
-                      <button
-                        type="button"
-                        key={opt.id}
-                        onClick={() => handleSelectAvatar(opt.id)}
-                        className={`h-10 rounded-xl ${opt.bg} text-white text-lg flex items-center justify-center transition-all ${
-                          userAvatar === opt.id ? 'ring-2 ring-[#2563EB] scale-105 shadow-md' : 'opacity-70 hover:opacity-100'
-                        }`}
-                      >
-                        {opt.emoji}
-                      </button>
-                    ))}
-                  </div>
+                  <label className="text-xs font-semibold text-[#94A3B8] uppercase tracking-normal block mb-1">First Name</label>
+                  <input 
+                    type="text" 
+                    value={authFirstName}
+                    onChange={(e) => setAuthFirstName(e.target.value)}
+                    placeholder="John"
+                    className="w-full h-11 px-3.5 rounded-[10px] border border-[#334155] bg-[#1E293B] text-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-[#60A5FA] text-sm"
+                    required
+                  />
                 </div>
-              </>
+                <div>
+                  <label className="text-xs font-semibold text-[#94A3B8] uppercase tracking-normal block mb-1">Last Name</label>
+                  <input 
+                    type="text" 
+                    value={authLastName}
+                    onChange={(e) => setAuthLastName(e.target.value)}
+                    placeholder="Doe"
+                    className="w-full h-11 px-3.5 rounded-[10px] border border-[#334155] bg-[#1E293B] text-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-[#60A5FA] text-sm"
+                    required
+                  />
+                </div>
+              </div>
             )}
 
             <div>
-              <label className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider block mb-1.5 ml-1">Email Address</label>
+              <label className="text-xs font-semibold text-[#94A3B8] uppercase tracking-normal block mb-1">Email Address</label>
               <input 
                 type="email" 
                 value={authEmail}
                 onChange={(e) => setAuthEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full h-12 px-4 rounded-xl border border-[#334155] bg-[#1E293B] text-[#CBD5E1] focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] text-sm transition-colors"
+                className="w-full h-11 px-3.5 rounded-[10px] border border-[#334155] bg-[#1E293B] text-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-[#60A5FA] text-sm"
                 required
               />
             </div>
             <div>
-              <label className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider block mb-1.5 ml-1">Password</label>
+              <label className="text-xs font-semibold text-[#94A3B8] uppercase tracking-normal block mb-1">Password</label>
               <input 
                 type="password" 
                 value={authPassword}
                 onChange={(e) => setAuthPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full h-12 px-4 rounded-xl border border-[#334155] bg-[#1E293B] text-[#CBD5E1] focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] text-sm transition-colors"
+                className="w-full h-11 px-3.5 rounded-[10px] border border-[#334155] bg-[#1E293B] text-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-[#60A5FA] text-sm"
                 required
               />
             </div>
@@ -456,7 +433,8 @@ const App: React.FC = () => {
             <Button 
               type="submit" 
               variant="primary" 
-              className="w-full h-12 mt-2 shadow-blue-500/25" 
+              fullWidth
+              className="mt-2"
               disabled={authLoading}
               icon={authLoading ? <Loader2 className="animate-spin" /> : undefined}
             >
@@ -473,329 +451,344 @@ const App: React.FC = () => {
                 setAuthFirstName("");
                 setAuthLastName("");
               }}
-              className="text-xs font-bold text-[#2563EB] hover:text-[#4F46E5] transition-colors uppercase tracking-wider"
+              className="text-xs font-semibold text-[#2563EB] hover:text-[#4F46E5] transition-colors"
             >
-              {isRegistering ? "Already have an account? Log In" : "New to Slip Vault? Create Account"}
+              {isRegistering ? "Already have an account? Log In" : "New to Receipt Vault? Create Account"}
             </button>
           </div>
         </div>
-
-        {/* Custom dialog in Login Screen */}
-        {dialogMessage && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
-            <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100 dark:border-slate-800 flex flex-col items-center text-center">
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 text-2xl bg-red-50 dark:bg-red-950/30 text-red-500">
-                ⚠️
-              </div>
-              <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100 mb-2">{dialogMessage.title}</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">{dialogMessage.message}</p>
-              <Button onClick={() => setDialogMessage(null)} variant="primary" className="w-full h-11 bg-red-500 hover:bg-red-600">Okay</Button>
-            </div>
-          </div>
-        )}
       </div>
     );
   }
 
   return (
-    <div className="h-full w-full bg-slate-100 flex overflow-hidden dark:bg-slate-950">
+    <div className="h-full w-full bg-[#F8FAFC] dark:bg-[#070B14] flex overflow-hidden">
       
-      {/* Dashboard & Viewer Wrapper (active for IDLE and VIEWING states) */}
       {(state === AppState.IDLE || state === AppState.VIEWING) && (
         <div className="flex-1 flex h-full w-full overflow-hidden">
-          {/* Left Panel: Dashboard / Sidebar on desktop */}
-          <div className={`h-full w-full md:w-[350px] md:shrink-0 md:border-r md:border-slate-200 dark:border-slate-800 ${state === AppState.IDLE ? 'block' : 'hidden md:block'} flex flex-col`}>
-            <div className="flex-1 overflow-hidden">
-              <Dashboard 
-                invoices={invoices}
-                activeTasks={activeTasks}
-                isLoading={isLoadingInvoices}
-                onScanClick={() => setState(AppState.SCANNING)}
-                onUploadClick={handleFileUpload}
-                onInvoiceClick={handleViewInvoice}
-                AppLogo={AppLogo}
-                filter={filter}
-                setFilter={setFilter}
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-                userAvatar={userAvatar}
-                onOpenAccountModal={() => setIsAccountModalOpen(true)}
-              />
-            </div>
-            {/* User Profile / Logout Bar at bottom of sidebar */}
-            <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
-              <div className="flex flex-col truncate max-w-[200px]">
-                <span className="text-[9px] text-slate-400 dark:text-slate-500 uppercase font-black tracking-wider">Logged In As</span>
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">
-                  {userFirstName || userLastName ? `${userFirstName} ${userLastName}` : userEmail}
-                </span>
-              </div>
-              <button 
-                onClick={handleLogout}
-                className="px-2.5 py-1 text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-900/30 rounded-lg transition-colors uppercase tracking-wider"
-              >
-                Logout
-              </button>
-            </div>
+          {/* Left Panel: Sidebar */}
+          <div className={`h-full w-full md:w-[320px] md:shrink-0 ${state === AppState.IDLE ? 'block' : 'hidden md:block'} flex flex-col`}>
+            <Dashboard 
+              invoices={invoices}
+              activeTasks={activeTasks}
+              isLoading={isLoadingInvoices}
+              onUploadClick={handleFileUpload}
+              onInvoiceClick={handleViewInvoice}
+              AppLogo={AppLogo}
+              filter={filter}
+              setFilter={setFilter}
+              userEmail={userEmail}
+              userName={userNameDisplay}
+              onOpenAccountModal={() => setIsAccountModalOpen(true)}
+              onLogout={handleLogout}
+            />
           </div>
 
-          {/* Right/Center Panel: Search Invoice and Receipt Table or Dashboard Metrics */}
-          <div className="h-full flex-1 bg-slate-50 flex flex-col overflow-hidden dark:bg-slate-950">
-            {/* Desktop Only Center Search Header */}
-            <div className="hidden md:block w-full bg-white border-b border-slate-200 py-4 px-8 shadow-sm shrink-0 dark:bg-slate-900 dark:border-slate-800">
-               <div className="max-w-4xl mx-auto flex items-center justify-between">
-                 <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Workspace Dashboard</h2>
-                 
-                 <div className="flex items-center gap-4">
-                   <div className="relative w-64 shadow-sm">
-                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                      <input 
-                         type="text"
-                         placeholder="Search stores, date, invoice #..."
-                         value={searchQuery}
-                         onChange={(e) => setSearchQuery(e.target.value)}
-                         className="w-full h-10 pl-11 pr-11 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 transition-all outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
-                      />
-                      {searchQuery && (
-                        <button 
-                          onClick={() => setSearchQuery('')}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-slate-500"
-                        >
-                          <X size={16} />
-                        </button>
-                      )}
-                   </div>
+          {/* Center/Right Panel: Main Receipts Area */}
+          <div className="h-full flex-1 bg-[#F8FAFC] dark:bg-[#070B14] flex flex-col overflow-hidden">
+            {/* Header: Page Title "Receipts", Single Global Search, Account & Theme Buttons */}
+            <header className="w-full bg-white dark:bg-[#111827] border-b border-[#DCE3EC] dark:border-[#334155] py-4 px-6 shadow-sm shrink-0 flex items-center justify-between gap-4">
+              <h1 className="text-xl font-bold text-[#172033] dark:text-[#F8FAFC]">Receipts</h1>
+              
+              <div className="flex items-center gap-3">
+                {/* Single Global Search in Header */}
+                <div className="relative w-64 md:w-80">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#64748B] dark:text-[#94A3B8]" size={18} aria-hidden="true" />
+                  <input 
+                    type="text"
+                    placeholder="Search stores, date, invoice #..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    aria-label="Global search receipts"
+                    className="w-full h-11 pl-10 pr-10 bg-[#F1F5F9] dark:bg-[#1E293B] border border-[#DCE3EC] dark:border-[#334155] rounded-[10px] text-xs text-[#172033] dark:text-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-[#60A5FA] transition-all"
+                  />
+                  {searchQuery && (
+                    <button 
+                      onClick={() => setSearchQuery('')}
+                      aria-label="Clear search query"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#172033] dark:text-[#94A3B8] dark:hover:text-[#F8FAFC]"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
 
-                   {/* Desktop User Profile Badge & Theme Button */}
-                   <button 
-                     onClick={() => setIsAccountModalOpen(true)}
-                     className="flex items-center gap-2.5 p-1.5 pr-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-emerald-500 transition-all"
-                     title="Account & Settings"
-                   >
-                     <div className={`w-8 h-8 rounded-lg ${currentAvatar.bg} text-white flex items-center justify-center font-bold text-sm shadow-sm`}>
-                       {currentAvatar.emoji}
-                     </div>
-                     <div className="flex flex-col text-left">
-                       <span className="text-xs font-bold text-slate-800 dark:text-slate-100 leading-tight truncate max-w-[120px]">
-                         {userFirstName || userLastName ? `${userFirstName} ${userLastName}`.trim() : userEmail.split('@')[0]}
-                       </span>
-                       <span className="text-[9px] text-slate-400 font-medium truncate max-w-[120px]">{userEmail}</span>
-                     </div>
-                   </button>
-
-                   <button
-                     onClick={toggleTheme}
-                     className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 transition-colors shrink-0"
-                     title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-                   >
-                     {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-                   </button>
-                 </div>
-               </div>
-            </div>
-
-            {/* Main scrollable area */}
-            <div className="flex-1 overflow-y-auto no-scrollbar">
-              {state === AppState.VIEWING && invoiceData ? (
-                /* Selected Receipt detail container (large table on desktop) */
-                <div className="w-full h-full md:max-w-3xl md:mx-auto md:py-6 md:px-4 md:flex md:flex-col animate-in fade-in duration-300">
-                  <div className="w-full h-full md:shadow-2xl md:rounded-3xl md:overflow-hidden md:border md:border-slate-200/50 dark:md:border-slate-800 md:flex md:flex-col">
-                    <ReceiptView 
-                      data={invoiceData} 
-                      onSave={handleSaveInvoice}
-                      onDelete={handleDeleteInvoice}
-                      onClose={resetApp}
-                      isSaved={!!invoiceData.id}
-                      isSaving={isSaving}
-                      isDeleting={isDeleting}
-                    />
+                {/* Account Button */}
+                <button 
+                  onClick={() => setIsAccountModalOpen(true)}
+                  aria-label="Account Settings"
+                  className="flex items-center gap-2 px-3 py-2 rounded-[10px] bg-[#F1F5F9] dark:bg-[#1E293B] border border-[#DCE3EC] dark:border-[#334155] hover:border-[#2563EB] transition-all focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
+                  title="Account Settings"
+                >
+                  <div className="w-7 h-7 rounded-full bg-[#2563EB] text-white flex items-center justify-center font-bold text-xs">
+                    <User size={14} />
                   </div>
+                  <span className="text-xs font-semibold text-[#172033] dark:text-[#F8FAFC] hidden sm:inline truncate max-w-[120px]">
+                    {userNameDisplay}
+                  </span>
+                </button>
+
+                {/* Theme Toggle Button */}
+                <button
+                  onClick={toggleTheme}
+                  aria-label={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                  className="p-2.5 rounded-[10px] bg-[#F1F5F9] hover:bg-[#DCE3EC] dark:bg-[#1E293B] dark:hover:bg-[#334155] text-[#172033] dark:text-[#CBD5E1] transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
+                  title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                >
+                  {theme === 'dark' ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} className="text-indigo-600" />}
+                </button>
+              </div>
+            </header>
+
+            {/* Scrollable Content Area */}
+            <div className="flex-1 overflow-y-auto p-6 no-scrollbar">
+              {state === AppState.VIEWING && invoiceData ? (
+                <div className="w-full max-w-4xl mx-auto animate-in fade-in duration-200">
+                  <ReceiptView 
+                    data={invoiceData} 
+                    onSave={handleSaveInvoice}
+                    onDelete={handleDeleteInvoice}
+                    onClose={resetApp}
+                    isSaved={!!invoiceData.id}
+                    isSaving={isSaving}
+                    isDeleting={isDeleting}
+                  />
                 </div>
               ) : (
-                /* Desktop Overview Dashboard with statistics cards and a table of matching receipts */
-                <div className="w-full h-full md:flex md:flex-col">
-                  {/* Mobile Empty State */}
-                  <div className="md:hidden text-center p-8 max-w-sm mx-auto mt-20">
-                    <div className="w-16 h-16 bg-white rounded-2xl shadow-md flex items-center justify-center mx-auto mb-4 text-emerald-500 dark:bg-slate-900">
-                      <Search className="w-8 h-8 animate-pulse" />
-                    </div>
-                    <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">No Receipt Selected</h3>
-                    <p className="text-sm text-slate-400 mt-2 dark:text-slate-500">
-                      Select an invoice or receipt from the list to view its detailed breakdown.
-                    </p>
-                  </div>
-
-                  {/* Desktop Only Dashboard Layout */}
-                  <div className="hidden md:flex flex-col flex-1 p-8 max-w-5xl mx-auto w-full">
-                    {/* Metrics Grid */}
-                    <div className="grid grid-cols-3 gap-6 mb-8 mt-2">
-                      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 dark:bg-slate-900 dark:border-slate-800 flex items-center gap-4 hover:shadow-md transition-shadow">
-                        <div className="w-12 h-12 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400">
-                          <FileText size={22} />
-                        </div>
-                        <div>
-                          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider block">Total Documents</span>
-                          <span className="text-2xl font-black text-slate-800 dark:text-slate-100">{stats.count}</span>
-                        </div>
+                <div className="max-w-6xl mx-auto w-full space-y-6">
+                  
+                  {/* Summary Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="bg-white dark:bg-[#111827] p-6 rounded-2xl border border-[#DCE3EC] dark:border-[#334155] shadow-sm flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-[#F1F5F9] dark:bg-[#1E293B] flex items-center justify-center text-[#2563EB]">
+                        <FileText size={22} aria-hidden="true" />
                       </div>
-                      
-                      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 dark:bg-slate-900 dark:border-slate-800 flex items-center gap-4 hover:shadow-md transition-shadow">
-                        <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                          <Receipt size={22} />
-                        </div>
-                        <div>
-                          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider block">Total Spends</span>
-                          <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
-                            {stats.currency}{stats.totalSpend.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 dark:bg-slate-900 dark:border-slate-800 flex items-center gap-4 hover:shadow-md transition-shadow">
-                        <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
-                          <CreditCard size={22} />
-                        </div>
-                        <div>
-                          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider block">Credit Balance</span>
-                          <span className="text-2xl font-black text-blue-600 dark:text-blue-400">
-                            {stats.currency}{stats.creditTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                          </span>
-                        </div>
+                      <div>
+                        <span className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-normal block">Total Documents</span>
+                        <span className="text-2xl font-black text-[#172033] dark:text-[#F8FAFC]">{stats.count}</span>
                       </div>
                     </div>
-
-                    {/* Receipt Table */}
-                    <div className="bg-white rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex-1 flex flex-col dark:bg-slate-900">
-                      <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-850 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
-                        <h3 className="font-extrabold text-slate-800 text-sm uppercase tracking-wide dark:text-slate-200">Receipts & Invoices</h3>
-                        <span className="text-xs bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-350 font-bold px-2.5 py-1 rounded-full">
-                          {desktopFilteredInvoices.length} Matching
+                    
+                    <div className="bg-white dark:bg-[#111827] p-6 rounded-2xl border border-[#DCE3EC] dark:border-[#334155] shadow-sm flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center text-[#059669] dark:text-[#34D399]">
+                        <Receipt size={22} aria-hidden="true" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-normal block">Total Spent</span>
+                        <span className="text-2xl font-black text-[#172033] dark:text-[#F8FAFC]">
+                          <span className="text-[#F59E0B] font-black mr-0.5">{stats.currency}</span>{stats.totalSpend.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </span>
                       </div>
-                      
-                      <div className="overflow-y-auto flex-1 no-scrollbar">
-                        <table className="w-full text-left border-collapse">
-                          <thead className="sticky top-0 bg-white z-10 border-b border-slate-100 dark:bg-slate-900 dark:border-slate-800">
-                            <tr>
-                              <th className="px-6 py-3.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Store</th>
-                              <th className="px-6 py-3.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Invoice #</th>
-                              <th className="px-6 py-3.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Date</th>
-                              <th className="px-6 py-3.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Type</th>
-                              <th className="px-6 py-3.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-right">Amount</th>
-                              <th className="px-6 py-3.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-center">Action</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-50 dark:divide-slate-850">
-                            {isLoadingInvoices ? (
-                              [1, 2, 3].map(i => (
-                                <tr key={i} className="animate-pulse">
-                                  <td colSpan={6} className="px-6 py-5"><div className="h-4 bg-slate-100 dark:bg-slate-800 rounded"></div></td>
-                                </tr>
-                              ))
-                            ) : groupedInvoices.length === 0 ? (
-                              <tr>
-                                <td colSpan={6} className="px-6 py-12 text-center text-slate-400 dark:text-slate-500 italic">No receipts found matching search/filter criteria.</td>
+                    </div>
+
+                    <div className="bg-white dark:bg-[#111827] p-6 rounded-2xl border border-[#DCE3EC] dark:border-[#334155] shadow-sm flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-[#2563EB]/10 dark:bg-[#2563EB]/20 flex items-center justify-center text-[#2563EB] dark:text-[#60A5FA]">
+                        <CreditCard size={22} aria-hidden="true" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-normal block">Credit Balance</span>
+                        <span className="text-2xl font-black text-[#2563EB] dark:text-[#60A5FA]">
+                          <span className="text-[#F59E0B] font-black mr-0.5">{stats.currency}</span>{stats.creditTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Receipt Table Container - Dynamic Height */}
+                  <div className="bg-white dark:bg-[#111827] rounded-2xl border border-[#DCE3EC] dark:border-[#334155] shadow-sm overflow-hidden">
+                    <div className="px-6 py-4 border-b border-[#DCE3EC] dark:border-[#334155] flex justify-between items-center bg-[#F8FAFC]/50 dark:bg-[#111827]">
+                      <h2 className="text-sm font-bold text-[#172033] dark:text-[#F8FAFC]">Receipts & Invoices</h2>
+                      <span className="text-xs bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8] font-semibold px-2.5 py-1 rounded-full">
+                        {desktopFilteredInvoices.length} receipts
+                      </span>
+                    </div>
+                    
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="border-b border-[#DCE3EC] dark:border-[#334155] bg-[#F8FAFC] dark:bg-[#1E293B]/40">
+                            <th className="px-6 py-3.5">
+                              <button onClick={() => handleSortClick('storeName')} className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] flex items-center gap-1 hover:text-[#172033] dark:hover:text-[#F8FAFC] focus:outline-none">
+                                Store {sortField === 'storeName' ? (sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />) : <ArrowUpDown size={12} />}
+                              </button>
+                            </th>
+                            <th className="px-6 py-3.5 text-xs font-semibold text-[#64748B] dark:text-[#94A3B8]">
+                              Invoice #
+                            </th>
+                            <th className="px-6 py-3.5">
+                              <button onClick={() => handleSortClick('date')} className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] flex items-center gap-1 hover:text-[#172033] dark:hover:text-[#F8FAFC] focus:outline-none">
+                                Date {sortField === 'date' ? (sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />) : <ArrowUpDown size={12} />}
+                              </button>
+                            </th>
+                            <th className="px-6 py-3.5">
+                              <button onClick={() => handleSortClick('type')} className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] flex items-center gap-1 hover:text-[#172033] dark:hover:text-[#F8FAFC] focus:outline-none">
+                                Type {sortField === 'type' ? (sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />) : <ArrowUpDown size={12} />}
+                              </button>
+                            </th>
+                            <th className="px-6 py-3.5 text-right">
+                              <button onClick={() => handleSortClick('totalAmount')} className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] inline-flex items-center gap-1 hover:text-[#172033] dark:hover:text-[#F8FAFC] focus:outline-none">
+                                Amount {sortField === 'totalAmount' ? (sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />) : <ArrowUpDown size={12} />}
+                              </button>
+                            </th>
+                            <th className="px-6 py-3.5 text-center text-xs font-semibold text-[#64748B] dark:text-[#94A3B8]">
+                              Action
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#DCE3EC] dark:divide-[#334155]">
+                          {isLoadingInvoices ? (
+                            [1, 2, 3].map(i => (
+                              <tr key={i} className="animate-pulse">
+                                <td colSpan={6} className="px-6 py-5"><div className="h-4 bg-[#F1F5F9] dark:bg-[#1E293B] rounded"></div></td>
                               </tr>
-                            ) : (
-                              groupedInvoices.map((group) => {
-                                const parent = group.parent;
-                                const children = group.children;
-                                const hasChildren = children.length > 0;
-                                const isExpanded = !!expandedGroups[parent.id];
-                                
-                                return (
-                                  <React.Fragment key={parent.id}>
-                                    {/* Parent Row */}
-                                    <tr 
-                                      onClick={() => handleViewInvoice(parent)}
-                                      className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 cursor-pointer transition-colors group text-sm"
-                                    >
-                                      <td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                                        {hasChildren && (
+                            ))
+                          ) : groupedInvoices.length === 0 ? (
+                            <tr>
+                              <td colSpan={6} className="px-6 py-12 text-center text-xs text-[#64748B] dark:text-[#94A3B8] italic">
+                                <div className="max-w-xs mx-auto flex flex-col items-center">
+                                  <div className="w-12 h-12 rounded-full bg-[#F1F5F9] dark:bg-[#1E293B] flex items-center justify-center mb-3 text-[#64748B]">
+                                    <Search size={20} />
+                                  </div>
+                                  <p className="font-semibold text-sm text-[#172033] dark:text-[#F8FAFC] not-italic mb-1">No receipts found</p>
+                                  <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">No receipts match your search or filter criteria.</p>
+                                </div>
+                              </td>
+                            </tr>
+                          ) : (
+                            groupedInvoices.map((group) => {
+                              const parent = group.parent;
+                              const children = group.children;
+                              const hasChildren = children.length > 0;
+                              const isExpanded = !!expandedGroups[parent.id];
+                              
+                              return (
+                                <React.Fragment key={parent.id}>
+                                  {/* Parent Row */}
+                                  <tr 
+                                    onClick={() => handleViewInvoice(parent)}
+                                    className="bg-white dark:bg-[#111827] hover:bg-[#F8FAFC] dark:hover:bg-[#1E293B] cursor-pointer transition-colors text-xs group"
+                                  >
+                                    <td className="px-6 py-4 font-semibold text-[#172033] dark:text-[#F8FAFC]">
+                                      <div className="flex items-center gap-2">
+                                        {hasChildren ? (
                                           <button 
                                             onClick={(e) => {
                                               e.stopPropagation();
                                               setExpandedGroups(prev => ({ ...prev, [parent.id]: !prev[parent.id] }));
                                             }}
-                                            className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-805 transition-colors"
+                                            aria-label={isExpanded ? "Collapse group" : "Expand group"}
+                                            className="p-1 rounded hover:bg-[#F1F5F9] dark:hover:bg-[#1E293B] transition-transform"
                                           >
-                                            <span className={`text-[10px] block transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}>▶</span>
+                                            <ChevronRight size={16} className={`text-[#64748B] dark:text-[#94A3B8] transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
                                           </button>
+                                        ) : (
+                                          <span className="w-4 shrink-0"></span>
                                         )}
-                                        {!hasChildren && <span className="w-4 shrink-0"></span>}
-                                        {parent.storeName}
+                                        <span className="truncate">{parent.storeName || "Unknown Store"}</span>
                                         {hasChildren && (
-                                          <span className="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-450 px-1.5 py-0.5 rounded-full font-bold ml-1">
+                                          <span className="text-xs bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8] px-2 py-0.5 rounded-full font-semibold ml-1">
                                             {children.length + 1} docs
                                           </span>
                                         )}
+                                      </div>
+                                    </td>
+                                    <td className="px-6 py-4 font-mono text-xs text-[#64748B] dark:text-[#CBD5E1] whitespace-nowrap">
+                                      {parent.invoiceNumber || '-'}
+                                    </td>
+                                    <td className="px-6 py-4 text-[#172033] dark:text-[#CBD5E1] whitespace-nowrap">
+                                      {formatDate(parent.date)}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                      {parent.type === 'CREDIT_INVOICE' ? (
+                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-[#2563EB]/10 text-[#2563EB] dark:bg-[#2563EB]/20 dark:text-[#60A5FA]">
+                                          <CreditCard size={12} /> Credit
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-emerald-50 text-[#059669] dark:bg-emerald-950/40 dark:text-[#34D399]">
+                                          <Receipt size={12} /> Invoice
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className={`px-6 py-4 text-right font-bold whitespace-nowrap ${
+                                      parent.type === 'CREDIT_INVOICE' 
+                                        ? 'text-[#059669] dark:text-[#34D399]' 
+                                        : 'text-[#172033] dark:text-[#CBD5E1]'
+                                    }`}>
+                                      {parent.type === 'CREDIT_INVOICE' ? '+' : ''}
+                                      <span className="text-[#F59E0B] font-extrabold mr-0.5">{parent.currency}</span>
+                                      {Math.abs(parent.totalAmount).toFixed(2)}
+                                    </td>
+                                    <td className="px-6 py-4 text-center whitespace-nowrap">
+                                      <button 
+                                        onClick={(e) => { e.stopPropagation(); handleViewInvoice(parent); }}
+                                        className="px-3 py-1 text-xs font-semibold rounded-[10px] bg-[#F1F5F9] text-[#172033] hover:bg-[#2563EB] hover:text-white dark:bg-[#1E293B] dark:text-[#CBD5E1] dark:hover:bg-[#2563EB] dark:hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
+                                      >
+                                        View
+                                      </button>
+                                    </td>
+                                  </tr>
+
+                                  {/* Expanded Child Rows */}
+                                  {hasChildren && isExpanded && children.map(child => (
+                                    <tr 
+                                      key={child.id}
+                                      onClick={() => handleViewInvoice(child)}
+                                      className="bg-[#F1F5F9] dark:bg-[#1E293B] hover:bg-[#E2E8F0] dark:hover:bg-[#334155]/60 cursor-pointer transition-colors text-xs border-l-4 border-l-[#2563EB]"
+                                    >
+                                      <td className="px-6 py-3 font-medium text-[#172033] dark:text-[#CBD5E1] pl-10">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-[#2563EB] dark:text-[#60A5FA] font-bold">┗</span>
+                                          <span className="truncate">{child.storeName}</span>
+                                          <span className="text-xs font-medium text-[#2563EB] dark:text-[#60A5FA] bg-[#2563EB]/10 dark:bg-[#2563EB]/20 px-2 py-0.5 rounded-full">
+                                            Original document
+                                          </span>
+                                        </div>
                                       </td>
-                                      <td className="px-6 py-4 font-mono text-xs text-slate-500 dark:text-slate-400">{parent.invoiceNumber || '-'}</td>
-                                      <td className="px-6 py-4 text-slate-600 dark:text-slate-350">{parent.date}</td>
-                                      <td className="px-6 py-4">
-                                        {parent.type === 'CREDIT_INVOICE' ? (
-                                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-bold rounded-full bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-900/50">
-                                            <CreditCard size={11} /> Credit
+                                      <td className="px-6 py-3 font-mono text-xs text-[#64748B] dark:text-[#94A3B8] whitespace-nowrap">
+                                        {child.invoiceNumber || '-'}
+                                      </td>
+                                      <td className="px-6 py-3 text-[#64748B] dark:text-[#94A3B8] whitespace-nowrap">
+                                        {formatDate(child.date)}
+                                      </td>
+                                      <td className="px-6 py-3 whitespace-nowrap">
+                                        {child.type === 'CREDIT_INVOICE' ? (
+                                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-[#2563EB]/10 text-[#2563EB] dark:bg-[#2563EB]/20 dark:text-[#60A5FA]">
+                                            <CreditCard size={12} /> Credit
                                           </span>
                                         ) : (
-                                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-900/50">
-                                            <Receipt size={11} /> Invoice
+                                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-emerald-50 text-[#059669] dark:bg-emerald-950/40 dark:text-[#34D399]">
+                                            <Receipt size={12} /> Invoice
                                           </span>
                                         )}
                                       </td>
-                                      <td className={`px-6 py-4 text-right font-bold ${parent.type === 'CREDIT_INVOICE' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-800 dark:text-slate-100'}`}>
-                                        {parent.type === 'CREDIT_INVOICE' ? '-' : ''}{parent.currency}{parent.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                      <td className={`px-6 py-3 text-right font-semibold whitespace-nowrap ${
+                                        child.type === 'CREDIT_INVOICE' 
+                                          ? 'text-[#059669] dark:text-[#34D399]' 
+                                          : 'text-[#172033] dark:text-[#CBD5E1]'
+                                      }`}>
+                                        {child.type === 'CREDIT_INVOICE' ? '+' : ''}
+                                        <span className="text-[#F59E0B] font-extrabold mr-0.5">{child.currency}</span>
+                                        {Math.abs(child.totalAmount).toFixed(2)}
                                       </td>
-                                      <td className="px-6 py-4 text-center">
-                                        <button className="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-50 text-slate-500 group-hover:bg-slate-800 group-hover:text-white dark:bg-slate-800 dark:text-slate-400 dark:group-hover:bg-slate-100 dark:group-hover:text-slate-900 transition-colors">
+                                      <td className="px-6 py-3 text-center whitespace-nowrap">
+                                        <button 
+                                          onClick={(e) => { e.stopPropagation(); handleViewInvoice(child); }}
+                                          className="px-2.5 py-1 text-xs font-semibold rounded-[10px] bg-white text-[#172033] hover:bg-[#2563EB] hover:text-white dark:bg-[#111827] dark:text-[#CBD5E1] dark:hover:bg-[#2563EB] transition-colors focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
+                                        >
                                           View
                                         </button>
                                       </td>
                                     </tr>
-                                    
-                                    {/* Child Rows */}
-                                    {hasChildren && isExpanded && children.map(child => (
-                                      <tr 
-                                        key={child.id}
-                                        onClick={() => handleViewInvoice(child)}
-                                        className="bg-slate-50/30 hover:bg-slate-50/60 dark:bg-slate-900/20 dark:hover:bg-slate-800/30 cursor-pointer transition-colors group text-sm border-l-2 border-emerald-500/30 dark:border-emerald-500/20"
-                                      >
-                                        <td className="px-6 py-3 font-semibold text-slate-700 dark:text-slate-350 pl-10 flex items-center gap-1.5">
-                                          <span className="text-slate-300 dark:text-slate-600">┗</span>
-                                          {child.storeName}
-                                        </td>
-                                        <td className="px-6 py-3 font-mono text-xs text-slate-500 dark:text-slate-500">{child.invoiceNumber || '-'}</td>
-                                        <td className="px-6 py-3 text-slate-500 dark:text-slate-400">{child.date}</td>
-                                        <td className="px-6 py-3">
-                                          {child.type === 'CREDIT_INVOICE' ? (
-                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-bold rounded-full bg-blue-50/60 text-blue-600 border border-blue-100/60 dark:bg-blue-950/20 dark:text-blue-450 dark:border-blue-900/30">
-                                              <CreditCard size={11} /> Credit
-                                            </span>
-                                          ) : (
-                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-50/60 text-emerald-600 border border-emerald-100/60 dark:bg-emerald-950/20 dark:text-emerald-450 dark:border-emerald-900/30">
-                                              <Receipt size={11} /> Invoice
-                                            </span>
-                                          )}
-                                        </td>
-                                        <td className={`px-6 py-3 text-right font-semibold ${child.type === 'CREDIT_INVOICE' ? 'text-blue-500 dark:text-blue-450' : 'text-slate-700 dark:text-slate-300'}`}>
-                                          {child.type === 'CREDIT_INVOICE' ? '-' : ''}{child.currency}{child.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                        </td>
-                                        <td className="px-6 py-3 text-center">
-                                          <button className="px-2 py-0.5 text-xs rounded bg-slate-50 text-slate-450 group-hover:bg-slate-200 group-hover:text-slate-700 dark:bg-slate-800 dark:text-slate-500 dark:group-hover:bg-slate-700 dark:group-hover:text-slate-300 transition-colors">
-                                            View
-                                          </button>
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </React.Fragment>
-                                );
-                              })
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
+                                  ))}
+                                </React.Fragment>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
+
                 </div>
               )}
             </div>
@@ -803,7 +796,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* 2. SCANNING STATE */}
+      {/* SCANNING STATE */}
       {state === AppState.SCANNING && (
         <CameraCapture 
           onCapture={handleCapture} 
@@ -811,49 +804,48 @@ const App: React.FC = () => {
         />
       )}
 
-      {/* 3. PROCESSING STATE */}
+      {/* PROCESSING STATE */}
       {state === AppState.PROCESSING && (
-        <div className="fixed inset-0 bg-white/90 backdrop-blur-md z-50 flex flex-col items-center justify-center p-8">
+        <div className="fixed inset-0 bg-white/90 dark:bg-[#070B14]/90 backdrop-blur-md z-50 flex flex-col items-center justify-center p-8">
           <div className="relative">
-             <div className="w-20 h-20 rounded-full border-4 border-slate-100 border-t-emerald-500 animate-spin"></div>
-             <Loader2 className="w-10 h-10 text-emerald-500 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+             <div className="w-16 h-16 rounded-full border-4 border-[#DCE3EC] border-t-[#2563EB] animate-spin"></div>
           </div>
-          <h3 className="text-2xl font-bold text-slate-800 mt-8 mb-2">Analyzing...</h3>
-          <p className="text-slate-500 text-center max-w-xs">
-            Extracting details and checking for credit items.
+          <h3 className="text-xl font-bold text-[#172033] dark:text-[#F8FAFC] mt-6 mb-2">Analyzing Receipt...</h3>
+          <p className="text-xs text-[#64748B] dark:text-[#94A3B8] text-center max-w-xs">
+            Extracting merchant details, items, tax and total amounts.
           </p>
         </div>
       )}
 
-      {/* 5. ERROR STATE */}
+      {/* ERROR STATE */}
       {state === AppState.ERROR && (
-        <div className="w-full max-w-lg h-full bg-white flex flex-col items-center justify-center p-8 shadow-2xl mx-auto">
-           <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-6 border-2 border-red-100">
-              <span className="text-4xl font-bold">!</span>
+        <div className="w-full max-w-md h-full bg-white dark:bg-[#111827] flex flex-col items-center justify-center p-8 shadow-2xl mx-auto rounded-2xl">
+           <div className="w-16 h-16 bg-[#DC2626]/10 text-[#DC2626] rounded-full flex items-center justify-center mb-4">
+              <span className="text-2xl font-bold">!</span>
            </div>
-           <h3 className="text-2xl font-bold text-slate-900 mb-2">Oops!</h3>
-           <p className="text-slate-500 text-center mb-10 px-4 leading-relaxed">{errorMsg}</p>
-           <Button onClick={resetApp} variant="primary" className="w-full max-w-xs">Try Again</Button>
+           <h3 className="text-xl font-bold text-[#172033] dark:text-[#F8FAFC] mb-2">Error Processing</h3>
+           <p className="text-xs text-[#64748B] dark:text-[#94A3B8] text-center mb-6 leading-relaxed">{errorMsg}</p>
+           <Button onClick={resetApp} variant="primary" className="w-full">Try Again</Button>
         </div>
       )}
 
-      {/* Premium Dialog Modal */}
+      {/* Dialog Modal */}
       {dialogMessage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100 dark:border-slate-800 flex flex-col items-center text-center animate-in scale-in duration-300">
-            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 text-2xl ${dialogMessage.type === 'error' ? 'bg-red-50 dark:bg-red-950/30 text-red-500' : 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-500'}`}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-[#111827] rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-[#DCE3EC] dark:border-[#334155] flex flex-col items-center text-center">
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 text-xl ${dialogMessage.type === 'error' ? 'bg-[#DC2626]/10 text-[#DC2626]' : 'bg-[#2563EB]/10 text-[#2563EB]'}`}>
               {dialogMessage.type === 'error' ? '⚠️' : 'ℹ️'}
             </div>
-            <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100 mb-2">
+            <h3 className="text-base font-bold text-[#172033] dark:text-[#F8FAFC] mb-1">
               {dialogMessage.title}
             </h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
+            <p className="text-xs text-[#64748B] dark:text-[#94A3B8] mb-5 leading-relaxed">
               {dialogMessage.message}
             </p>
             <Button 
               onClick={() => setDialogMessage(null)} 
               variant="primary" 
-              className={`w-full h-11 ${dialogMessage.type === 'error' ? 'bg-red-500 hover:bg-red-600 shadow-red-200/50' : ''}`}
+              fullWidth
             >
               Okay
             </Button>
@@ -861,59 +853,40 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Account Details & Avatar Selection Modal */}
+      {/* Account Modal */}
       {isAccountModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-100 dark:border-slate-800 flex flex-col relative animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-[#111827] rounded-2xl p-6 max-w-md w-full shadow-2xl border border-[#DCE3EC] dark:border-[#334155] flex flex-col relative">
             <button 
               onClick={() => setIsAccountModalOpen(false)}
-              className="absolute top-4 right-4 p-2 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              aria-label="Close modal"
+              className="absolute top-4 right-4 p-2 rounded-full text-[#64748B] hover:text-[#172033] dark:text-[#94A3B8] dark:hover:text-[#F8FAFC]"
             >
-              <X size={20} />
+              <X size={18} />
             </button>
 
-            <div className="flex items-center gap-4 mb-6 pt-2">
-              <div className={`w-16 h-16 rounded-2xl ${currentAvatar.bg} text-white flex items-center justify-center font-bold text-2xl shadow-md shrink-0`}>
-                {currentAvatar.emoji}
+            <div className="flex items-center gap-3.5 mb-6 pt-2">
+              <div className="w-12 h-12 rounded-xl bg-[#2563EB] text-white flex items-center justify-center font-bold text-lg shadow-md shrink-0">
+                <User size={22} />
               </div>
               <div className="flex flex-col truncate">
-                <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 truncate">
-                  {userFirstName || userLastName ? `${userFirstName} ${userLastName}`.trim() : userEmail.split('@')[0]}
+                <h3 className="text-base font-bold text-[#172033] dark:text-[#F8FAFC] truncate">
+                  {userNameDisplay}
                 </h3>
-                <p className="text-xs text-slate-400 dark:text-slate-500 truncate">{userEmail}</p>
-                <span className="text-[10px] font-mono font-semibold text-emerald-600 dark:text-emerald-400 mt-1">ID: {userId}</span>
+                <p className="text-xs text-[#64748B] dark:text-[#94A3B8] truncate">{userEmail}</p>
+                <span className="text-xs font-mono text-[#2563EB] dark:text-[#60A5FA] mt-0.5">User ID: {userId || 'demo'}</span>
               </div>
             </div>
 
-            {/* Avatar Selector (9 Options) */}
-            <div className="mb-6">
-              <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">
-                Choose Avatar (9 Options)
-              </label>
-              <div className="grid grid-cols-5 gap-2.5">
-                {AVATAR_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.id}
-                    onClick={() => handleSelectAvatar(opt.id)}
-                    className={`h-12 rounded-xl ${opt.bg} text-white text-xl flex items-center justify-center transition-all ${
-                      userAvatar === opt.id ? 'ring-4 ring-emerald-500 scale-105 shadow-lg' : 'opacity-70 hover:opacity-100 hover:scale-100'
-                    }`}
-                    title={opt.label}
-                  >
-                    {opt.emoji}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Single Theme Toggle */}
-            <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 mb-6">
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Appearance Mode</span>
+            {/* Appearance Mode */}
+            <div className="flex items-center justify-between p-3.5 rounded-[10px] bg-[#F1F5F9] dark:bg-[#1E293B] border border-[#DCE3EC] dark:border-[#334155] mb-6">
+              <span className="text-xs font-semibold text-[#172033] dark:text-[#CBD5E1]">Appearance Theme</span>
               <button
                 onClick={toggleTheme}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 shadow-sm"
+                aria-label="Toggle theme"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-[10px] bg-white dark:bg-[#111827] border border-[#DCE3EC] dark:border-[#334155] text-xs font-semibold text-[#172033] dark:text-[#CBD5E1] shadow-sm focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
               >
-                {theme === 'dark' ? <Sun size={14} className="text-amber-400" /> : <Moon size={14} className="text-indigo-500" />}
+                {theme === 'dark' ? <Sun size={14} className="text-amber-400" /> : <Moon size={14} className="text-indigo-600" />}
                 {theme === 'dark' ? 'Dark' : 'Light'}
               </button>
             </div>
@@ -923,7 +896,7 @@ const App: React.FC = () => {
               <Button onClick={() => setIsAccountModalOpen(false)} variant="secondary" className="flex-1">
                 Close
               </Button>
-              <Button onClick={handleLogout} variant="primary" className="flex-1 bg-red-500 hover:bg-red-600">
+              <Button onClick={handleLogout} variant="danger" className="flex-1">
                 Logout
               </Button>
             </div>

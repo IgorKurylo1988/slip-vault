@@ -7,43 +7,71 @@ interface InvoiceListItemProps {
   onClick: () => void;
 }
 
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
 const InvoiceListItem: React.FC<InvoiceListItemProps> = ({ invoice, onClick }) => {
   const isCredit = invoice.type === 'CREDIT_INVOICE';
   
   return (
     <div 
       onClick={onClick}
-      className="bg-white p-4 rounded-xl shadow-sm border border-[#DCE3EC] flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer group hover:border-[#1D4ED8] dark:bg-[#111827] dark:border-[#334155] dark:hover:border-[#2563EB]"
+      tabIndex={0}
+      role="button"
+      aria-label={`View details for ${invoice.storeName || 'receipt'} on ${formatDate(invoice.date)}`}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); }}
+      className="bg-white dark:bg-[#111827] p-4 rounded-2xl shadow-sm border border-[#DCE3EC] dark:border-[#334155] flex items-center justify-between hover:bg-[#F8FAFC] dark:hover:bg-[#1E293B] cursor-pointer transition-all active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-[#60A5FA] focus:ring-offset-2 dark:focus:ring-offset-[#070B14] group"
     >
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3.5 min-w-0 pr-2">
         {/* Icon Badge */}
-        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl shrink-0 ${
+        <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
           isCredit 
-            ? 'bg-indigo-50 text-[#1D4ED8] dark:bg-indigo-950/50 dark:text-[#2563EB]' 
-            : 'bg-blue-50 text-[#1D4ED8] dark:bg-blue-950/50 dark:text-[#2563EB]'
+            ? 'bg-[#2563EB]/10 text-[#2563EB] dark:bg-[#2563EB]/20 dark:text-[#60A5FA]' 
+            : 'bg-emerald-50 text-[#059669] dark:bg-emerald-950/40 dark:text-[#34D399]'
         }`}>
-          {isCredit ? <CreditCard size={20} className="text-[#1D4ED8] dark:text-[#2563EB]" /> : <ShoppingBag size={20} className="text-[#1D4ED8] dark:text-[#2563EB]" />}
+          {isCredit ? <CreditCard size={20} aria-hidden="true" /> : <ShoppingBag size={20} aria-hidden="true" />}
         </div>
         
         {/* Details */}
-        <div className="flex flex-col overflow-hidden">
-          <h4 className="font-bold text-[#1D4ED8] dark:text-[#F8FAFC] truncate pr-2">{invoice.storeName || "Unknown Store"}</h4>
-          <div className="flex items-center gap-2 text-xs text-[#64748B] dark:text-[#94A3B8]">
-             <span>{invoice.date}</span>
-             {invoice.items.length > 0 && <span>• {invoice.items.length} items</span>}
+        <div className="flex flex-col min-w-0">
+          <h4 className="font-semibold text-sm text-[#172033] dark:text-[#F8FAFC] truncate">
+            {invoice.storeName || "Unknown Store"}
+          </h4>
+          <div className="flex items-center gap-2 text-xs text-[#64748B] dark:text-[#94A3B8] mt-0.5">
+             <span className="whitespace-nowrap">{formatDate(invoice.date)}</span>
+             {invoice.invoiceNumber && (
+               <span className="font-mono text-xs text-[#64748B] dark:text-[#94A3B8] truncate max-w-[100px]">
+                 #{invoice.invoiceNumber}
+               </span>
+             )}
           </div>
         </div>
       </div>
 
       {/* Amount & Arrow */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 shrink-0">
         <div className="text-right">
-          <span className={`block font-bold ${isCredit ? 'text-[#1D4ED8] dark:text-[#2563EB]' : 'text-[#172033] dark:text-[#F8FAFC]'}`}>
-            <span className="text-[#F59E0B] font-extrabold mr-0.5">{invoice.currency}</span>{Math.abs(invoice.totalAmount).toFixed(2)}
+          <span className={`block font-bold text-sm ${
+            isCredit 
+              ? 'text-[#059669] dark:text-[#34D399]' 
+              : 'text-[#172033] dark:text-[#CBD5E1]'
+          }`}>
+            {isCredit ? '+' : ''}<span className="text-[#F59E0B] font-extrabold mr-0.5">{invoice.currency}</span>{Math.abs(invoice.totalAmount).toFixed(2)}
           </span>
-          {isCredit && <span className="text-[10px] uppercase font-bold text-[#1D4ED8] bg-blue-50 dark:bg-blue-950/50 px-1.5 py-0.5 rounded">Credit</span>}
+          <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full mt-0.5 ${
+            isCredit 
+              ? 'bg-[#2563EB]/10 text-[#2563EB] dark:bg-[#2563EB]/20 dark:text-[#60A5FA]' 
+              : 'bg-slate-100 text-[#64748B] dark:bg-[#1E293B] dark:text-[#94A3B8]'
+          }`}>
+            {isCredit ? <CreditCard size={10} /> : <ShoppingBag size={10} />}
+            {isCredit ? 'Credit' : 'Invoice'}
+          </span>
         </div>
-        <ChevronRight size={18} className="text-[#94A3B8] group-hover:text-[#1D4ED8] dark:text-[#64748B] dark:group-hover:text-[#2563EB] transition-colors" />
+        <ChevronRight size={18} className="text-[#94A3B8] group-hover:text-[#2563EB] dark:text-[#64748B] dark:group-hover:text-[#60A5FA] transition-colors" aria-hidden="true" />
       </div>
     </div>
   );

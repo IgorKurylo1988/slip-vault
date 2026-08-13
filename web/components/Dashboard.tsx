@@ -1,8 +1,8 @@
-import React, { useMemo } from 'react';
-import { InvoiceData, AVATAR_OPTIONS } from '../types';
+import React, { useMemo, useState } from 'react';
+import { InvoiceData } from '../types';
 import InvoiceListItem from './InvoiceListItem';
 import Button from './Button';
-import { Scan, Upload, CreditCard, Receipt, List, Search as SearchIcon, X, User } from 'lucide-react';
+import { Upload, CreditCard, Receipt, List, FileText, ChevronRight } from 'lucide-react';
 
 type FilterType = 'ALL' | 'INVOICE' | 'CREDIT_INVOICE';
 
@@ -10,33 +10,40 @@ interface DashboardProps {
   invoices: InvoiceData[];
   activeTasks: { id: string; name: string }[];
   isLoading: boolean;
-  onScanClick: () => void;
-  onUploadClick: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onUploadClick: (e: React.ChangeEvent<HTMLInputElement> | { target: { files: FileList | null } }) => void;
   onInvoiceClick: (invoice: InvoiceData) => void;
   AppLogo: React.FC;
   filter: FilterType;
   setFilter: (filter: FilterType) => void;
-  searchQuery: string;
-  setSearchQuery: (query: string) => void;
-  userAvatar: string;
+  userEmail: string;
+  userName: string;
   onOpenAccountModal: () => void;
+  onLogout: () => void;
 }
+
+export const formatDate = (dateStr: string) => {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+};
 
 const Dashboard: React.FC<DashboardProps> = ({ 
   invoices, 
   activeTasks,
   isLoading, 
-  onScanClick, 
   onUploadClick, 
   onInvoiceClick,
   AppLogo,
   filter,
   setFilter,
-  searchQuery,
-  setSearchQuery,
-  userAvatar,
-  onOpenAccountModal
+  userEmail,
+  userName,
+  onOpenAccountModal,
+  onLogout
 }) => {
+  const [isDragOver, setIsDragOver] = useState(false);
+
   const stats = useMemo(() => {
     const credits = invoices.filter(i => i.type === 'CREDIT_INVOICE');
     const totalCredits = credits.reduce((acc, curr) => acc + curr.totalAmount, 0);
@@ -46,200 +53,152 @@ const Dashboard: React.FC<DashboardProps> = ({
     return { count: invoices.length, creditCount: credits.length, creditTotal: totalCredits, totalSpend, currency };
   }, [invoices]);
 
-  const currentAvatar = AVATAR_OPTIONS.find(a => a.id === userAvatar) || AVATAR_OPTIONS[0];
-
-  const filteredInvoices = useMemo(() => {
-    return invoices.filter(inv => {
-      const matchesFilter = filter === 'ALL' || inv.type === filter;
-      const matchesSearch = inv.storeName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                           inv.invoiceNumber?.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesFilter && matchesSearch;
-    });
-  }, [invoices, filter, searchQuery]);
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      onUploadClick({ target: { files: e.dataTransfer.files } });
+    }
+  };
 
   return (
-    <div className="w-full h-full bg-slate-50 flex flex-col md:max-w-none md:shadow-none relative dark:bg-slate-900">
+    <div className="w-full h-full bg-[#F8FAFC] dark:bg-[#070B14] flex flex-col justify-between border-r border-[#DCE3EC] dark:border-[#334155]">
       
-      {/* Header Section */}
-      <div className="bg-white px-6 pt-8 pb-4 rounded-b-[2.5rem] shadow-sm z-10 flex flex-col shrink-0 dark:bg-[#111827] dark:border-b dark:border-[#334155]">
-         <div className="flex items-center justify-between w-full mb-6">
-            <div className="flex items-center gap-3">
-              <div className="scale-75 origin-left"><AppLogo /></div>
-              <div className="flex flex-col">
-                <h1 className="text-xl font-extrabold text-[#1D4ED8] dark:text-[#F8FAFC] tracking-tight leading-none">Slip Vault</h1>
-                <p className="text-[#64748B] text-[10px] uppercase font-bold tracking-widest mt-1 dark:text-[#94A3B8]">Digital Receipt Vault</p>
-              </div>
-            </div>
+      {/* Top Sidebar Header */}
+      <div className="p-6 flex flex-col shrink-0">
+        <div className="flex items-center gap-3.5 mb-6">
+          <div className="scale-90 origin-left"><AppLogo /></div>
+          <div className="flex flex-col">
+            <h1 className="text-xl font-black text-[#172033] dark:text-[#F8FAFC] tracking-tight">Receipt Vault</h1>
+            <p className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] mt-0.5">Digitized Credit Vault</p>
+          </div>
+        </div>
 
-            {/* Mobile Account / Avatar Button */}
-            <button 
-              onClick={onOpenAccountModal}
-              className="p-1.5 rounded-2xl bg-[#F1F5F9] dark:bg-[#1E293B] border border-[#DCE3EC] dark:border-[#334155] flex items-center gap-2 hover:scale-105 transition-transform"
-              title="Account Details & Avatar"
-            >
-              <div className={`w-8 h-8 rounded-xl ${currentAvatar.bg} text-white flex items-center justify-center font-bold text-sm shadow-sm`}>
-                {currentAvatar.emoji}
-              </div>
-            </button>
-         </div>
-         
-         {/* Mobile Metrics (Total Documents, Total Spends, Credit Balance) */}
-         <div className="grid grid-cols-3 gap-2 mb-4 md:hidden border-t border-[#DCE3EC] dark:border-[#334155] pt-4">
-            <div className="bg-[#F1F5F9] dark:bg-[#1E293B]/50 p-2.5 rounded-xl flex flex-col">
-              <span className="text-[8px] text-[#64748B] dark:text-[#94A3B8] font-bold uppercase tracking-wider whitespace-nowrap">Documents</span>
-              <span className="text-sm font-black text-[#172033] dark:text-[#F8FAFC]">{stats.count}</span>
-            </div>
-            <div className="bg-[#F1F5F9] dark:bg-[#1E293B]/50 p-2.5 rounded-xl flex flex-col">
-              <span className="text-[8px] text-[#64748B] dark:text-[#94A3B8] font-bold uppercase tracking-wider whitespace-nowrap">Total Spend</span>
-              <span className="text-sm font-black text-[#1D4ED8] dark:text-[#2563EB] truncate">
-                <span className="text-[#F59E0B] font-extrabold mr-0.5">{stats.currency}</span>{stats.totalSpend.toLocaleString(undefined, { minimumFractionDigits: 0 })}
-              </span>
-            </div>
-            <div className="bg-[#F1F5F9] dark:bg-[#1E293B]/50 p-2.5 rounded-xl flex flex-col">
-              <span className="text-[8px] text-[#64748B] dark:text-[#94A3B8] font-bold uppercase tracking-wider whitespace-nowrap">Credit Bal</span>
-              <span className="text-sm font-black text-[#4F46E5] truncate">
-                <span className="text-[#F59E0B] font-extrabold mr-0.5">{stats.currency}</span>{stats.creditTotal.toLocaleString(undefined, { minimumFractionDigits: 0 })}
-              </span>
-            </div>
-         </div>
+        {/* Upload Action Drag & Drop Area */}
+        <div 
+          onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+          onDragLeave={() => setIsDragOver(false)}
+          onDrop={handleDrop}
+          className={`relative group rounded-2xl border-2 border-dashed p-4 text-center transition-all ${
+            isDragOver 
+              ? 'border-[#2563EB] bg-[#2563EB]/10 dark:bg-[#2563EB]/20 scale-[1.01]' 
+              : 'border-[#DCE3EC] dark:border-[#334155] bg-white dark:bg-[#111827] hover:border-[#2563EB] dark:hover:border-[#2563EB]'
+          }`}
+        >
+          <input
+            type="file"
+            accept="image/*,.pdf"
+            aria-label="Upload Receipt"
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+            onChange={onUploadClick}
+          />
+          <Button 
+            fullWidth 
+            variant="primary"
+            icon={<Upload size={18} aria-hidden="true" />}
+            className="mb-2 shadow-md"
+          >
+            Upload Receipt
+          </Button>
+          <p className="text-xs text-[#64748B] dark:text-[#94A3B8] font-medium">
+            Drag & drop receipt here or click to browse
+          </p>
+          <span className="inline-block mt-1 text-xs text-[#94A3B8] dark:text-[#94A3B8] bg-[#F1F5F9] dark:bg-[#1E293B] px-2 py-0.5 rounded-full font-medium">
+            JPEG, PNG, PDF • Max 10MB
+          </span>
+        </div>
 
-         {/* Search Bar (Mobile only) */}
-         <div className="relative mb-4 md:hidden">
-            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-[#64748B]" size={18} />
-            <input 
-               type="text"
-               placeholder="Search store or invoice #..."
-               value={searchQuery}
-               onChange={(e) => setSearchQuery(e.target.value)}
-               className="w-full h-11 pl-10 pr-10 bg-[#F1F5F9] border border-[#DCE3EC] dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:border-[#1D4ED8] focus:ring-1 focus:ring-[#1D4ED8] dark:focus:border-[#2563EB] dark:focus:ring-[#2563EB] transition-all outline-none dark:bg-[#1E293B] dark:text-[#CBD5E1]"
-            />
-            {searchQuery && (
-              <button 
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#172033]"
-              >
-                <X size={16} />
-              </button>
-            )}
-         </div>
-
-         <div className="flex gap-3 w-full">
-            <Button 
-              onClick={onScanClick} 
-              fullWidth 
-              variant="primary"
-              icon={<Scan size={18} />}
-              className="h-11 text-sm md:hidden"
-            >
-              Scan New
-            </Button>
-            <div className="relative group flex-1">
-              <input
-                type="file"
-                accept="image/*"
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                onChange={onUploadClick}
-              />
-              <Button 
-                fullWidth 
-                variant="secondary"
-                icon={<Upload size={18} />}
-                className="h-11 w-full text-sm font-semibold dark:bg-[#1E293B] dark:hover:bg-[#334155]/50 dark:text-[#F8FAFC] dark:border-[#334155]"
-              >
-                Upload
-              </Button>
-            </div>
-         </div>
-      </div>
-
-      {/* Filter Tabs */}
-      <div className="px-6 py-4 flex gap-2 shrink-0 overflow-x-auto no-scrollbar">
+        {/* Navigation / Filter Tabs */}
+        <div className="mt-6 space-y-1">
+          <label className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-normal block mb-2 px-1">
+            Filter View
+          </label>
           <button 
             onClick={() => setFilter('ALL')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-bold transition-all whitespace-nowrap ${
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-[10px] text-xs font-semibold transition-all ${
               filter === 'ALL' 
-                ? 'bg-[#172033] text-white dark:bg-[#F8FAFC] dark:text-[#070B14]' 
-                : 'bg-white text-[#64748B] border border-[#DCE3EC] shadow-sm dark:bg-[#1E293B] dark:text-[#94A3B8] dark:border-[#334155]'
+                ? 'bg-[#2563EB] text-white shadow-sm' 
+                : 'text-[#172033] dark:text-[#CBD5E1] hover:bg-white dark:hover:bg-[#111827]'
             }`}
           >
-            <List size={12} /> All
+            <span className="flex items-center gap-2.5"><List size={16} /> All Receipts</span>
+            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${filter === 'ALL' ? 'bg-white/20 text-white' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8]'}`}>
+              {stats.count}
+            </span>
           </button>
+
           <button 
             onClick={() => setFilter('INVOICE')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-bold transition-all whitespace-nowrap ${
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-[10px] text-xs font-semibold transition-all ${
               filter === 'INVOICE' 
-                ? 'bg-[#1D4ED8] dark:bg-[#2563EB] text-white' 
-                : 'bg-white text-[#64748B] border border-[#DCE3EC] shadow-sm dark:bg-[#1E293B] dark:text-[#94A3B8] dark:border-[#334155]'
+                ? 'bg-[#2563EB] text-white shadow-sm' 
+                : 'text-[#172033] dark:text-[#CBD5E1] hover:bg-white dark:hover:bg-[#111827]'
             }`}
           >
-            <Receipt size={12} /> Invoices
+            <span className="flex items-center gap-2.5"><Receipt size={16} /> Invoices</span>
+            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${filter === 'INVOICE' ? 'bg-white/20 text-white' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8]'}`}>
+              {invoices.filter(i => i.type === 'INVOICE' || i.type === 'RECEIPT').length}
+            </span>
           </button>
+
           <button 
             onClick={() => setFilter('CREDIT_INVOICE')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-bold transition-all whitespace-nowrap ${
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-[10px] text-xs font-semibold transition-all ${
               filter === 'CREDIT_INVOICE' 
-                ? 'bg-[#4F46E5] text-white' 
-                : 'bg-white text-[#64748B] border border-[#DCE3EC] shadow-sm dark:bg-[#1E293B] dark:text-[#94A3B8] dark:border-[#334155]'
+                ? 'bg-[#2563EB] text-white shadow-sm' 
+                : 'text-[#172033] dark:text-[#CBD5E1] hover:bg-white dark:hover:bg-[#111827]'
             }`}
           >
-            <CreditCard size={12} /> Credits
+            <span className="flex items-center gap-2.5"><CreditCard size={16} /> Credits</span>
+            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${filter === 'CREDIT_INVOICE' ? 'bg-white/20 text-white' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8]'}`}>
+              {stats.creditCount}
+            </span>
           </button>
-      </div>
-
-      {/* List Section - Mobile Only */}
-      <div className="flex-1 overflow-hidden flex flex-col md:hidden">
-        <div className="flex-1 overflow-y-auto px-6 pb-24 space-y-3 no-scrollbar relative">
-           {activeTasks && activeTasks.map(task => (
-             <div key={task.id} className="h-16 bg-emerald-500/10 dark:bg-emerald-950/20 border border-emerald-550/20 dark:border-emerald-900/30 rounded-xl px-4 flex items-center justify-between shadow-sm animate-pulse shrink-0">
-               <div className="flex items-center gap-3">
-                 <div className="w-5 h-5 rounded-full border-2 border-emerald-500/30 border-t-emerald-500 animate-spin shrink-0"></div>
-                 <div>
-                   <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Analyzing Receipt...</p>
-                   <p className="text-[9px] font-mono text-slate-400 dark:text-slate-500">ID: {task.id.slice(0, 8)}...</p>
-                 </div>
-               </div>
-               <span className="text-[9px] bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">
-                 Processing
-               </span>
-             </div>
-           ))}
-           {isLoading ? (
-             <div className="space-y-3 mt-1">
-               {[1, 2, 3, 4].map(i => (
-                 <div key={i} className="h-16 bg-white rounded-xl shadow-sm border border-slate-100 dark:bg-slate-800 dark:border-slate-750 animate-pulse animate-duration-1000"></div>
-               ))}
-             </div>
-           ) : filteredInvoices.length === 0 ? (
-             <div className="flex flex-col items-center justify-center py-12 text-slate-400 mt-4 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-white/50 dark:bg-slate-800/30">
-                <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
-                  <SearchIcon size={20} className="opacity-30" />
-                </div>
-                <p className="text-sm font-bold text-slate-500 dark:text-slate-350">No matches found</p>
-                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">Try a different filter or search term</p>
-             </div>
-           ) : (
-             filteredInvoices.map((inv) => (
-               <InvoiceListItem 
-                 key={inv.id} 
-                 invoice={inv} 
-                 onClick={() => onInvoiceClick(inv)} 
-               />
-             ))
-           )}
         </div>
       </div>
-      
-      {/* Bottom Status Bar */}
-      <div className="absolute bottom-0 left-0 w-full bg-white/90 backdrop-blur-md border-t border-slate-100 p-3 flex justify-between items-center z-10 px-6 dark:bg-slate-900/90 dark:border-slate-800">
-         <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-            <span className="text-[9px] font-bold text-slate-400 dark:text-slate-550 uppercase tracking-tight">Encrypted Storage</span>
-         </div>
-         
-         <div className="flex items-center gap-3">
-            <span className="text-[9px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-tight">{filteredInvoices.length} Items Listed</span>
-         </div>
+
+      {/* Mobile-Only List Section */}
+      <div className="flex-1 overflow-y-auto px-4 pb-20 space-y-3 md:hidden no-scrollbar">
+        {activeTasks && activeTasks.map(task => (
+          <div key={task.id} className="p-3 bg-[#059669]/10 border border-[#059669]/20 rounded-2xl flex items-center justify-between animate-pulse">
+            <span className="text-xs font-semibold text-[#172033] dark:text-[#F8FAFC]">Analyzing Receipt...</span>
+            <span className="text-xs bg-[#059669] text-white px-2 py-0.5 rounded-full font-bold">Processing</span>
+          </div>
+        ))}
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-16 bg-white dark:bg-[#111827] rounded-2xl animate-pulse"></div>
+            ))}
+          </div>
+        ) : invoices.length === 0 ? (
+          <div className="p-6 text-center text-xs text-[#64748B] dark:text-[#94A3B8] bg-white dark:bg-[#111827] rounded-2xl border border-[#DCE3EC] dark:border-[#334155]">
+            No receipts uploaded yet.
+          </div>
+        ) : (
+          invoices.map((inv) => (
+            <InvoiceListItem key={inv.id} invoice={inv} onClick={() => onInvoiceClick(inv)} />
+          ))
+        )}
       </div>
+
+      {/* Bottom Compact Logout Option */}
+      <div className="p-4 border-t border-[#DCE3EC] dark:border-[#334155] bg-white dark:bg-[#111827] flex items-center justify-between shrink-0">
+        <div className="flex flex-col truncate pr-2">
+          <span className="text-xs font-semibold text-[#172033] dark:text-[#F8FAFC] truncate">
+            {userName || userEmail.split('@')[0]}
+          </span>
+          <span className="text-xs text-[#64748B] dark:text-[#94A3B8] truncate">{userEmail}</span>
+        </div>
+        <button 
+          onClick={onLogout}
+          aria-label="Log out of account"
+          className="px-3 py-1.5 text-xs font-semibold text-[#DC2626] dark:text-[#F87171] hover:bg-[#DC2626]/10 dark:hover:bg-[#F87171]/10 rounded-[10px] transition-colors focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
+        >
+          Logout
+        </button>
+      </div>
+
     </div>
   );
 };
