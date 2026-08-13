@@ -63,7 +63,7 @@ const App: React.FC = () => {
   // Account modal & Admin mode state
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isAdminMode, setIsAdminMode] = useState(false);
-  const isAdmin = userEmail.endsWith('@slip-vault.com') || userEmail.toLowerCase().includes('admin');
+  const isAdmin = Boolean(userEmail && (userEmail.toLowerCase().endsWith('@slip-vault.com') || userEmail.toLowerCase().includes('admin')));
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -73,6 +73,37 @@ const App: React.FC = () => {
     }
     localStorage.setItem('theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    if (!token) return;
+    const handleHashChange = () => {
+      const hash = window.location.hash || '#/receipts';
+      if (hash === '#/admin' || hash === '#admin') {
+        if (isAdmin) {
+          setIsAdminMode(true);
+        } else {
+          window.location.hash = '#/receipts';
+          setIsAdminMode(false);
+        }
+      } else {
+        setIsAdminMode(false);
+      }
+    };
+
+    handleHashChange();
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [isAdmin, token]);
+
+  const navigateToAdmin = () => {
+    window.location.hash = '#/admin';
+    setIsAdminMode(true);
+  };
+
+  const navigateToReceipts = () => {
+    window.location.hash = '#/receipts';
+    setIsAdminMode(false);
+  };
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
@@ -377,6 +408,17 @@ const App: React.FC = () => {
     </div>
   );
 
+  const getUserInitials = (fName?: string, lName?: string, email?: string): string => {
+    const f = (fName || '').trim();
+    const l = (lName || '').trim();
+    if (f && l) return `${f[0]}${l[0]}`.toUpperCase();
+    if (f) return f[0].toUpperCase();
+    if (l) return l[0].toUpperCase();
+    if (email) return email.trim()[0].toUpperCase();
+    return 'U';
+  };
+
+  const userInitials = getUserInitials(userFirstName, userLastName, userEmail);
   const userNameDisplay = userFirstName || userLastName ? `${userFirstName} ${userLastName}`.trim() : userEmail.split('@')[0];
 
   if (!token) {
@@ -511,8 +553,8 @@ const App: React.FC = () => {
   return (
     <div className="h-full w-full bg-[#F8FAFC] dark:bg-[#070B14] flex overflow-hidden">
       
-      {isAdminMode ? (
-        <AdminBoard onClose={() => setIsAdminMode(false)} onViewInvoice={handleViewInvoice} />
+      {isAdminMode && isAdmin ? (
+        <AdminBoard onClose={navigateToReceipts} onViewInvoice={handleViewInvoice} />
       ) : (
         (state === AppState.IDLE || state === AppState.VIEWING) && (
           <div className="flex-1 flex h-full w-full overflow-hidden">
@@ -563,16 +605,18 @@ const App: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Admin Board Button */}
-                  <button 
-                    onClick={() => setIsAdminMode(true)}
-                    aria-label="Open Admin Board"
-                    className="min-h-[44px] flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-[#F59E0B]/10 hover:bg-[#F59E0B]/20 text-[#F59E0B] font-semibold text-xs border border-[#F59E0B]/30 transition-all focus:outline-none focus:ring-2 focus:ring-[#60A5FA] shrink-0"
-                    title="Open System Admin Board"
-                  >
-                    <ShieldAlert size={16} />
-                    <span className="hidden md:inline">Admin Board</span>
-                  </button>
+                  {/* Admin Board Button (visible only to admins) */}
+                  {isAdmin && (
+                    <button 
+                      onClick={navigateToAdmin}
+                      aria-label="Open Admin Board"
+                      className="min-h-[44px] flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-[#F59E0B]/10 hover:bg-[#F59E0B]/20 text-[#F59E0B] font-semibold text-xs border border-[#F59E0B]/30 transition-all focus:outline-none focus:ring-2 focus:ring-[#60A5FA] shrink-0"
+                      title="Open System Admin Board"
+                    >
+                      <ShieldAlert size={16} />
+                      <span className="hidden md:inline">Admin Board</span>
+                    </button>
+                  )}
 
                   {/* Account Button */}
                   <button 
@@ -795,7 +839,7 @@ const App: React.FC = () => {
                                     <tr 
                                       key={child.id}
                                       onClick={() => handleViewInvoice(child)}
-                                      className="bg-[#F1F5F9] dark:bg-[#1E293B] hover:bg-[#E2E8F0] dark:hover:bg-[#334155]/60 cursor-pointer transition-colors text-xs border-l-4 border-l-[#2563EB]"
+                                      className="bg-[#F1F5F9] dark:bg-[#1E293B] hover:bg-[#E2E8F0] dark:hover:bg-[#334155] cursor-pointer transition-colors text-xs border-l-4 border-l-[#2563EB]"
                                     >
                                       <td className="px-6 py-3 font-medium text-[#172033] dark:text-[#CBD5E1] pl-10">
                                         <div className="flex items-center gap-2">
@@ -930,8 +974,8 @@ const App: React.FC = () => {
             </button>
 
             <div className="flex items-center gap-3.5 mb-6 pt-2">
-              <div className="w-12 h-12 rounded-xl bg-[#2563EB] text-white flex items-center justify-center font-bold text-lg shadow-md shrink-0">
-                <User size={22} />
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#4F46E5] text-white flex items-center justify-center font-black text-base tracking-wider shadow-md shrink-0 uppercase">
+                {userInitials}
               </div>
               <div className="flex flex-col truncate">
                 <h3 className="text-base font-bold text-[#172033] dark:text-[#F8FAFC] truncate">

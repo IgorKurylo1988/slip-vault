@@ -39,6 +39,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   setFilter,
   userEmail,
   userName,
+  onOpenAccountModal,
   onLogout
 }) => {
   const [isDragOver, setIsDragOver] = useState(false);
@@ -184,18 +185,36 @@ const Dashboard: React.FC<DashboardProps> = ({
         )}
       </div>
 
-      {/* Bottom Logout Option with 44px Touch Target */}
+      {/* Bottom Profile & Logout Option with 44px Touch Target */}
       <div className="p-4 border-t border-[#DCE3EC] dark:border-[#334155] bg-white dark:bg-[#111827] flex items-center justify-between shrink-0">
-        <div className="flex flex-col truncate pr-3">
-          <span className="text-xs font-semibold text-[#172033] dark:text-[#F8FAFC] truncate">
-            {userName || userEmail.split('@')[0]}
-          </span>
-          <span className="text-xs text-[#64748B] dark:text-[#94A3B8] truncate">{userEmail}</span>
-        </div>
+        <button 
+          onClick={onOpenAccountModal}
+          className="flex items-center gap-2.5 truncate pr-2 text-left focus:outline-none"
+          title="Open Account Settings"
+        >
+          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#2563EB] to-[#4F46E5] text-white flex items-center justify-center font-black text-xs tracking-wider shrink-0 uppercase shadow-sm">
+            {(() => {
+              const nameParts = (userName || '').trim().split(/\s+/);
+              if (nameParts.length >= 2 && nameParts[0] && nameParts[1]) {
+                return `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase();
+              }
+              if (userName && userName.trim()) {
+                return userName.trim()[0].toUpperCase();
+              }
+              return (userEmail || 'U').trim()[0].toUpperCase();
+            })()}
+          </div>
+          <div className="flex flex-col truncate">
+            <span className="text-xs font-semibold text-[#172033] dark:text-[#F8FAFC] truncate">
+              {userName || userEmail.split('@')[0]}
+            </span>
+            <span className="text-xs text-[#64748B] dark:text-[#94A3B8] truncate">{userEmail}</span>
+          </div>
+        </button>
         <button 
           onClick={onLogout}
           aria-label="Log out of account"
-          className="min-h-[44px] min-w-[70px] px-4 py-2.5 text-xs font-semibold text-[#DC2626] dark:text-[#F87171] hover:bg-[#DC2626]/10 dark:hover:bg-[#F87171]/10 rounded-[10px] transition-colors focus:outline-none focus:ring-2 focus:ring-[#60A5FA] shrink-0"
+          className="min-h-[44px] min-w-[70px] px-3 py-2 text-xs font-semibold text-[#DC2626] dark:text-[#F87171] hover:bg-[#DC2626]/10 dark:hover:bg-[#F87171]/10 rounded-[10px] transition-colors focus:outline-none focus:ring-2 focus:ring-[#60A5FA] shrink-0"
         >
           Logout
         </button>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { InvoiceData } from '../types';
 import Button from './Button';
+import DeleteConfirmModal from './DeleteConfirmModal';
 import { Search, Trash2, ShieldAlert, ArrowLeft, Loader2, CreditCard, Receipt, FileText, RefreshCw, X, Download, Users, User } from 'lucide-react';
 
 interface AdminBoardProps {
@@ -19,6 +20,16 @@ interface AdminUser {
   totalSpend: number;
   totalCredits: number;
 }
+
+const getUserInitials = (fName?: string, lName?: string, email?: string): string => {
+  const f = (fName || '').trim();
+  const l = (lName || '').trim();
+  if (f && l) return `${f[0]}${l[0]}`.toUpperCase();
+  if (f) return f[0].toUpperCase();
+  if (l) return l[0].toUpperCase();
+  if (email) return email.trim()[0].toUpperCase();
+  return 'U';
+};
 
 const formatDate = (dateStr: string | number) => {
   if (!dateStr) return '-';
@@ -39,6 +50,7 @@ const AdminBoard: React.FC<AdminBoardProps> = ({ onClose, onViewInvoice }) => {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pendingDeleteReceipt, setPendingDeleteReceipt] = useState<{ id: string; storeName: string; invoiceNumber: string } | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [exportingUserId, setExportingUserId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -80,10 +92,9 @@ const AdminBoard: React.FC<AdminBoardProps> = ({ onClose, onViewInvoice }) => {
     fetchAdminData();
   }, []);
 
-  const handleDelete = async (id: string, storeName: string) => {
-    if (!confirm(`ADMIN ACTION: Are you sure you want to permanently delete receipt for "${storeName}" (${id})?`)) {
-      return;
-    }
+  const handleConfirmDeleteReceipt = async () => {
+    if (!pendingDeleteReceipt) return;
+    const { id } = pendingDeleteReceipt;
     setDeletingId(id);
     try {
       const token = localStorage.getItem('token') || '';
@@ -95,6 +106,7 @@ const AdminBoard: React.FC<AdminBoardProps> = ({ onClose, onViewInvoice }) => {
         throw new Error('Failed to delete receipt.');
       }
       setInvoices(prev => prev.filter(inv => inv.id !== id));
+      setPendingDeleteReceipt(null);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Delete failed');
     } finally {
@@ -410,7 +422,7 @@ const AdminBoard: React.FC<AdminBoardProps> = ({ onClose, onViewInvoice }) => {
                             </td>
                             <td className="px-6 py-4 text-center whitespace-nowrap">
                               <button
-                                onClick={() => inv.id && handleDelete(inv.id, inv.storeName)}
+                                onClick={() => inv.id && setPendingDeleteReceipt({ id: inv.id, storeName: inv.storeName || 'Unknown Store', invoiceNumber: inv.invoiceNumber || inv.id })}
                                 disabled={deletingId === inv.id}
                                 aria-label={`Admin delete receipt for ${inv.storeName}`}
                                 className="px-3 py-2 min-h-[44px] text-xs font-semibold rounded-[10px] bg-[#DC2626]/10 text-[#DC2626] dark:bg-[#F87171]/10 dark:text-[#F87171] hover:bg-[#DC2626] hover:text-white dark:hover:bg-[#DC2626] dark:hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-[#60A5FA] inline-flex items-center gap-1"
@@ -469,8 +481,8 @@ const AdminBoard: React.FC<AdminBoardProps> = ({ onClose, onViewInvoice }) => {
                           <tr key={u.id} className="hover:bg-[#F8FAFC] dark:hover:bg-[#1E293B] transition-colors text-xs">
                             <td className="px-6 py-4 font-semibold text-[#172033] dark:text-[#F8FAFC]">
                               <div className="flex items-center gap-2.5">
-                                <div className="w-8 h-8 rounded-full bg-[#2563EB] text-white flex items-center justify-center font-bold shrink-0">
-                                  <User size={15} />
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#2563EB] to-[#4F46E5] text-white flex items-center justify-center font-black text-xs tracking-wider shrink-0 uppercase shadow-sm">
+                                  {getUserInitials(u.firstName, u.lastName, u.email)}
                                 </div>
                                 <div>
                                   <div className="font-bold text-[#172033] dark:text-[#F8FAFC]">{u.email}</div>
@@ -544,6 +556,18 @@ const AdminBoard: React.FC<AdminBoardProps> = ({ onClose, onViewInvoice }) => {
         )}
 
       </div>
+
+      {/* Admin Delete Confirmation Modal */}
+      {pendingDeleteReceipt && (
+        <DeleteConfirmModal
+          title="Admin Delete Receipt Confirmation"
+          itemName={pendingDeleteReceipt.storeName}
+          expectedInvoiceNumber={pendingDeleteReceipt.invoiceNumber}
+          onConfirm={handleConfirmDeleteReceipt}
+          onCancel={() => setPendingDeleteReceipt(null)}
+          isDeleting={!!deletingId}
+        />
+      )}
     </div>
   );
 };

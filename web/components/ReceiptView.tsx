@@ -3,6 +3,7 @@ import { Share2, CheckCircle, MapPin, Undo2, Eye, X, Trash2, ArrowLeft, Save, Lo
 import { InvoiceData } from '../types';
 import Button from './Button';
 import Barcode from './Barcode';
+import DeleteConfirmModal from './DeleteConfirmModal';
 import html2canvas from 'html2canvas';
 
 interface ReceiptViewProps {
@@ -25,6 +26,7 @@ const ReceiptView: React.FC<ReceiptViewProps> = ({
   isDeleting = false
 }) => {
   const [showImage, setShowImage] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [isSharingImage, setIsSharingImage] = useState(false);
   const receiptRef = useRef<HTMLDivElement>(null);
@@ -88,9 +90,10 @@ const ReceiptView: React.FC<ReceiptViewProps> = ({
     }
   };
 
-  const handleDelete = () => {
-    if (data.id && onDelete && confirm("Are you sure you want to delete this invoice?")) {
+  const handleDeleteConfirm = () => {
+    if (data.id && onDelete) {
       onDelete(data.id);
+      setShowDeleteModal(false);
     }
   };
 
@@ -128,7 +131,7 @@ const ReceiptView: React.FC<ReceiptViewProps> = ({
               )}
               {isSaved && (
                 <button 
-                  onClick={handleDelete}
+                  onClick={() => setShowDeleteModal(true)}
                   disabled={isDeleting}
                   aria-label="Delete receipt"
                   className="w-[44px] h-[44px] min-w-[44px] min-h-[44px] bg-red-500/20 backdrop-blur-md rounded-full hover:bg-red-500/40 transition-colors shadow-sm text-red-100 disabled:opacity-50 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
@@ -341,6 +344,17 @@ const ReceiptView: React.FC<ReceiptViewProps> = ({
              High-contrast B&W processing optimized for AI extraction.
            </p>
         </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <DeleteConfirmModal
+          itemName={data.storeName || 'Digitized Receipt'}
+          expectedInvoiceNumber={data.invoiceNumber || data.id || ''}
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setShowDeleteModal(false)}
+          isDeleting={isDeleting}
+        />
       )}
     </div>
   );
