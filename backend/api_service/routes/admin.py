@@ -86,8 +86,11 @@ async def get_admin_users(admin_payload: dict = Depends(get_admin_user)):
                 user_stats[uid]["spend"] += abs(inv.get("totalAmount", 0.0))
 
         result = []
+        known_user_ids = set()
         for u in users:
             uid = u.get("id")
+            if uid:
+                known_user_ids.add(uid)
             email = u.get("email", "")
             stats = user_stats.get(uid, {"count": 0, "spend": 0.0, "credits": 0.0})
             result.append({
@@ -101,6 +104,22 @@ async def get_admin_users(admin_payload: dict = Depends(get_admin_user)):
                 "totalSpend": stats["spend"],
                 "totalCredits": stats["credits"]
             })
+
+        # Include user IDs found in receipts that may not have explicit user profile records
+        for uid, stats in user_stats.items():
+            if uid and uid not in known_user_ids and uid != "unknown":
+                synthetic_email = f"{uid}@slip-vault.com"
+                result.append({
+                    "id": uid,
+                    "email": synthetic_email,
+                    "role": get_user_role(synthetic_email),
+                    "firstName": "Active",
+                    "lastName": "User",
+                    "createdAt": 0,
+                    "uploadedPicturesCount": stats["count"],
+                    "totalSpend": stats["spend"],
+                    "totalCredits": stats["credits"]
+                })
         return result
     except Exception as e:
         raise HTTPException(

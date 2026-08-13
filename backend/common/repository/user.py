@@ -25,12 +25,16 @@ class UserRepository:
     def get_all(self) -> List[dict]:
         try:
             docs = self.collection.stream()
-            users = [doc.to_dict() for doc in docs]
+            users = []
+            for doc in docs:
+                data = doc.to_dict()
+                if data:
+                    users.append(data)
             users.sort(key=lambda u: u.get("createdAt", 0), reverse=True)
             return users
         except Exception as e:
             logger.error(f"Failed to get all users: {e}")
-            return []
+            raise e
 
     def create(self, user_id: str, email: str, password_hash: str, first_name: str = "", last_name: str = "") -> str:
         try:
