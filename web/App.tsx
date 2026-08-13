@@ -58,6 +58,7 @@ const App: React.FC = () => {
   const [authLastName, setAuthLastName] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   // Account modal & Admin mode state
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
@@ -79,12 +80,9 @@ const App: React.FC = () => {
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAuthError(null);
     if (!authEmail || !authPassword) {
-      setDialogMessage({
-        title: "Validation Error",
-        message: "Please enter both email and password.",
-        type: "error"
-      });
+      setAuthError("Please enter both email and password.");
       return;
     }
     
@@ -106,7 +104,7 @@ const App: React.FC = () => {
       
       const resData = await response.json();
       if (!response.ok) {
-        throw new Error(resData.detail || "Authentication failed");
+        throw new Error(resData.detail || "Invalid email or password.");
       }
       
       localStorage.setItem('token', resData.token);
@@ -125,10 +123,13 @@ const App: React.FC = () => {
       setAuthEmail("");
       setAuthFirstName("");
       setAuthLastName("");
+      setAuthError(null);
     } catch (err) {
+      const msg = err instanceof Error ? err.message : "Network error occurred";
+      setAuthError(msg);
       setDialogMessage({
         title: isRegistering ? "Registration Failed" : "Login Failed",
-        message: err instanceof Error ? err.message : "Network error occurred",
+        message: msg,
         type: "error"
       });
     } finally {
@@ -393,6 +394,13 @@ const App: React.FC = () => {
           </div>
           
           <form onSubmit={handleAuth} className="space-y-4">
+            {authError && (
+              <div className="p-3.5 bg-[#DC2626]/10 border border-[#DC2626]/30 text-[#F87171] text-xs font-semibold rounded-[10px] flex items-center gap-2">
+                <ShieldAlert size={16} className="shrink-0 text-[#F87171]" />
+                <span>{authError}</span>
+              </div>
+            )}
+
             {isRegistering && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -400,7 +408,7 @@ const App: React.FC = () => {
                   <input 
                     type="text" 
                     value={authFirstName}
-                    onChange={(e) => setAuthFirstName(e.target.value)}
+                    onChange={(e) => { setAuthFirstName(e.target.value); setAuthError(null); }}
                     placeholder="John"
                     className="w-full h-11 px-3.5 rounded-[10px] border border-[#334155] bg-[#1E293B] text-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-[#60A5FA] text-sm"
                     required
@@ -411,7 +419,7 @@ const App: React.FC = () => {
                   <input 
                     type="text" 
                     value={authLastName}
-                    onChange={(e) => setAuthLastName(e.target.value)}
+                    onChange={(e) => { setAuthLastName(e.target.value); setAuthError(null); }}
                     placeholder="Doe"
                     className="w-full h-11 px-3.5 rounded-[10px] border border-[#334155] bg-[#1E293B] text-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-[#60A5FA] text-sm"
                     required
@@ -425,7 +433,7 @@ const App: React.FC = () => {
               <input 
                 type="email" 
                 value={authEmail}
-                onChange={(e) => setAuthEmail(e.target.value)}
+                onChange={(e) => { setAuthEmail(e.target.value); setAuthError(null); }}
                 placeholder="you@example.com"
                 className="w-full h-11 px-3.5 rounded-[10px] border border-[#334155] bg-[#1E293B] text-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-[#60A5FA] text-sm"
                 required
@@ -436,7 +444,7 @@ const App: React.FC = () => {
               <input 
                 type="password" 
                 value={authPassword}
-                onChange={(e) => setAuthPassword(e.target.value)}
+                onChange={(e) => { setAuthPassword(e.target.value); setAuthError(null); }}
                 placeholder="••••••••"
                 className="w-full h-11 px-3.5 rounded-[10px] border border-[#334155] bg-[#1E293B] text-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-[#60A5FA] text-sm"
                 required
@@ -463,6 +471,7 @@ const App: React.FC = () => {
                 setAuthPassword("");
                 setAuthFirstName("");
                 setAuthLastName("");
+                setAuthError(null);
               }}
               className="text-xs font-semibold text-[#2563EB] hover:text-[#4F46E5] transition-colors p-2"
             >
@@ -470,6 +479,31 @@ const App: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* Dialog Modal on Login Screen */}
+        {dialogMessage && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
+            <div className="bg-[#111827] rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-[#334155] flex flex-col items-center text-center">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 text-xl bg-[#DC2626]/10 text-[#DC2626]">
+                ⚠️
+              </div>
+              <h3 className="text-base font-bold text-[#F8FAFC] mb-1">
+                {dialogMessage.title}
+              </h3>
+              <p className="text-xs text-[#94A3B8] mb-5 leading-relaxed">
+                {dialogMessage.message}
+              </p>
+              <Button 
+                onClick={() => setDialogMessage(null)} 
+                variant="primary" 
+                fullWidth
+                className="min-h-[44px]"
+              >
+                Okay
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

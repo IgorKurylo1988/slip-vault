@@ -19,7 +19,7 @@ from common.messaging import get_messaging_provider
 from common.auth_utils import hash_password, verify_password, create_jwt_token, decode_jwt_token
 from common.schemas import ProcessInvoiceRequest
 from common.models.invoice import InvoiceModel
-from common.models.user import UserAuthSchema
+from common.models.user import UserAuthSchema, UserRegisterSchema
 
 # Import repositories
 from common.repository.user import UserRepository
