@@ -7,7 +7,7 @@ resource "google_project_service" "services" {
     "firestore.googleapis.com",
     "storage.googleapis.com",
     "pubsub.googleapis.com",
-    "aiplatform.googleapis.com", # Vertex AI API for Gemini
+    "aiplatform.googleapis.com",    # Vertex AI API for Gemini
     "secretmanager.googleapis.com", # Secret Manager API for RESEND_API_KEY
     "iam.googleapis.com"
   ])

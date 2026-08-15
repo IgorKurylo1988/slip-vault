@@ -3,7 +3,7 @@
 # =====================================================================
 
 resource "google_secret_manager_secret" "resend_api_key" {
-  secret_id = "RESEND_API_KEY"
+  secret_id  = "RESEND_API_KEY"
   depends_on = [google_project_service.services]
 
   replication {
