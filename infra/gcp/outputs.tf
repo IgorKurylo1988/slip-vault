@@ -23,4 +23,7 @@ output "notification_service_account_email" {
   value       = google_service_account.notification_sa.email
 }
 
-
+output "resend_api_key_secret_id" {
+  description = "Secret Manager Secret ID for RESEND_API_KEY"
+  value       = google_secret_manager_secret.resend_api_key.secret_id
+}
