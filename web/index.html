@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Slip Vault</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="apple-touch-icon" href="/favicon.svg" />
@@ -37,6 +37,11 @@
       -ms-overflow-style: none;
       scrollbar-width: none;
     }
+
+    /* Mobile physical safe area insets */
+    .pb-safe {
+      padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    }
   </style>
   <script type="importmap">
 {
@@ -53,8 +58,8 @@
 </script>
 </head>
 
-<body class="bg-slate-50 text-slate-900 antialiased h-screen w-screen overflow-hidden">
-  <div id="root" class="h-full w-full"></div>
+<body class="bg-slate-50 text-slate-900 antialiased h-screen h-[100dvh] w-screen overflow-hidden">
+  <div id="root" class="h-full h-[100dvh] w-full"></div>
   <script type="module" src="./index.tsx"></script>
   <script type="module" src="/index.tsx"></script>
 </body>

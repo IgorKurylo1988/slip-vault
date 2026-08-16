@@ -745,7 +745,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="h-full w-full bg-[#F8FAFC] dark:bg-[#070B14] flex overflow-hidden">
+    <div className="h-full h-[100dvh] w-full bg-[#F8FAFC] dark:bg-[#070B14] flex overflow-hidden">
       
       {isAdminMode && isAdmin ? (
         <AdminBoard onClose={navigateToReceipts} onViewInvoice={handleViewInvoice} />

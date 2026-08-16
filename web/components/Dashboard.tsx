@@ -245,8 +245,8 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* Bottom Profile & Logout Option with 44px Touch Target */}
-      <div className="p-4 border-t border-[#DCE3EC] dark:border-[#334155] bg-white dark:bg-[#111827] flex items-center justify-between shrink-0">
+      {/* Bottom Profile & Logout Option with 44px Touch Target and Mobile Safe Area */}
+      <div className="p-4 pb-safe border-t border-[#DCE3EC] dark:border-[#334155] bg-white dark:bg-[#111827] flex items-center justify-between shrink-0 z-20">
         <button 
           onClick={onOpenAccountModal}
           className="flex items-center gap-2.5 truncate pr-2 text-left focus:outline-none"
@@ -254,6 +254,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         >
           <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#2563EB] to-[#4F46E5] text-white flex items-center justify-center font-black text-xs tracking-wider shrink-0 uppercase shadow-sm">
             {(() => {
+              const activeEmail = userEmail || localStorage.getItem('userEmail') || '';
               const nameParts = (userName || '').trim().split(/\s+/);
               if (nameParts.length >= 2 && nameParts[0] && nameParts[1]) {
                 return `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase();
@@ -261,14 +262,16 @@ const Dashboard: React.FC<DashboardProps> = ({
               if (userName && userName.trim()) {
                 return userName.trim()[0].toUpperCase();
               }
-              return (userEmail || 'U').trim()[0].toUpperCase();
+              return (activeEmail || 'U').trim()[0].toUpperCase();
             })()}
           </div>
           <div className="flex flex-col truncate">
             <span className="text-xs font-semibold text-[#172033] dark:text-[#F8FAFC] truncate">
-              {userName || userEmail.split('@')[0]}
+              {userName || (userEmail ? userEmail.split('@')[0] : (localStorage.getItem('userEmail') ? (localStorage.getItem('userEmail') || '').split('@')[0] : 'User Account'))}
             </span>
-            <span className="text-xs text-[#64748B] dark:text-[#94A3B8] truncate">{userEmail}</span>
+            <span className="text-xs text-[#64748B] dark:text-[#94A3B8] truncate">
+              {userEmail || localStorage.getItem('userEmail') || 'Account Active'}
+            </span>
           </div>
         </button>
         <button 
