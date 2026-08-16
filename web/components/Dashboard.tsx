@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { InvoiceData } from '../types';
 import InvoiceListItem from './InvoiceListItem';
 import Button from './Button';
-import { Upload, CreditCard, Receipt, List, Search, FileText, X } from 'lucide-react';
+import { Upload, CreditCard, Receipt, List, Search, X } from 'lucide-react';
 
 type FilterType = 'ALL' | 'INVOICE' | 'CREDIT_INVOICE';
 
@@ -81,17 +81,17 @@ const Dashboard: React.FC<DashboardProps> = ({
   };
 
   return (
-    <div className="w-full h-full bg-[#F8FAFC] dark:bg-[#070B14] flex flex-col border-r border-[#DCE3EC] dark:border-[#334155] overflow-hidden">
+    <div className="w-full h-full flex flex-col min-h-0 overflow-hidden bg-[#F8FAFC] dark:bg-[#070B14] border-r border-[#DCE3EC] dark:border-[#334155]">
       
-      {/* Scrollable Middle Body */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5 no-scrollbar">
+      {/* 1. Fixed Upper Content: Header, Upload Button & Filter Tabs */}
+      <div className="shrink-0 p-4 md:p-6 space-y-4 border-b border-[#DCE3EC]/50 dark:border-[#334155]/50 bg-[#F8FAFC] dark:bg-[#070B14]">
         
-        {/* Logo & Header */}
-        <div className="flex items-center gap-3.5">
-          <div className="scale-90 origin-left"><AppLogo /></div>
-          <div className="flex flex-col">
-            <h1 className="text-xl font-black text-[#172033] dark:text-[#F8FAFC] tracking-tight">Receipt Vault</h1>
-            <p className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] mt-0.5">Digitized Credit Vault</p>
+        {/* App Logo & Title */}
+        <div className="flex items-center gap-3">
+          <div className="scale-90 origin-left shrink-0"><AppLogo /></div>
+          <div className="flex flex-col min-w-0">
+            <h1 className="text-lg md:text-xl font-black text-[#172033] dark:text-[#F8FAFC] tracking-tight truncate">Receipt Vault</h1>
+            <p className="text-[11px] font-semibold text-[#64748B] dark:text-[#94A3B8] truncate">Digitized Credit Vault</p>
           </div>
         </div>
 
@@ -100,7 +100,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
           onDragLeave={() => setIsDragOver(false)}
           onDrop={handleDrop}
-          className={`relative group rounded-2xl border-2 border-dashed p-4 text-center transition-all ${
+          className={`relative group rounded-2xl border-2 border-dashed p-3 md:p-4 text-center transition-all ${
             isDragOver 
               ? 'border-[#2563EB] bg-[#2563EB]/10 dark:bg-[#2563EB]/20 scale-[1.01]' 
               : 'border-[#DCE3EC] dark:border-[#334155] bg-white dark:bg-[#111827] hover:border-[#2563EB] dark:hover:border-[#2563EB]'
@@ -117,69 +117,75 @@ const Dashboard: React.FC<DashboardProps> = ({
             fullWidth 
             variant="primary"
             icon={<Upload size={18} aria-hidden="true" />}
-            className="mb-2 shadow-md min-h-[44px]"
+            className="mb-1.5 shadow-md min-h-[44px]"
           >
             Upload Receipt
           </Button>
-          <p className="text-xs text-[#64748B] dark:text-[#94A3B8] font-medium">
+          <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] font-medium hidden sm:block">
             Drag & drop receipt here or click to browse
           </p>
-          <span className="inline-block mt-1 text-xs text-[#94A3B8] dark:text-[#94A3B8] bg-[#F1F5F9] dark:bg-[#1E293B] px-2.5 py-1 rounded-full font-medium">
+          <span className="inline-block mt-0.5 text-[10px] text-[#94A3B8] dark:text-[#94A3B8] bg-[#F1F5F9] dark:bg-[#1E293B] px-2 py-0.5 rounded-full font-medium">
             JPEG, PNG, PDF • Max 10MB
           </span>
         </div>
 
         {/* Navigation / Filter Tabs with 44px Touch Targets */}
-        <div className="space-y-2">
-          <label className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-normal block mb-1 px-1">
+        <div className="space-y-1.5">
+          <label className="text-[11px] font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-normal block px-1">
             Filter View
           </label>
-          <button 
-            onClick={() => setFilter('ALL')}
-            aria-label="Filter all receipts"
-            className={`w-full flex items-center justify-between px-4 py-3 min-h-[44px] rounded-[10px] text-xs font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-[#60A5FA] ${
-              filter === 'ALL' 
-                ? 'bg-[#2563EB] text-white shadow-sm' 
-                : 'text-[#172033] dark:text-[#CBD5E1] hover:bg-white dark:hover:bg-[#111827]'
-            }`}
-          >
-            <span className="flex items-center gap-2.5"><List size={16} /> All Receipts</span>
-            <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${filter === 'ALL' ? 'bg-white/20 text-white' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8]'}`}>
-              {stats.count}
-            </span>
-          </button>
+          <div className="grid grid-cols-3 md:grid-cols-1 gap-1.5">
+            <button 
+              onClick={() => setFilter('ALL')}
+              aria-label="Filter all receipts"
+              className={`flex items-center justify-between px-3 py-2.5 min-h-[44px] rounded-[10px] text-xs font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-[#60A5FA] ${
+                filter === 'ALL' 
+                  ? 'bg-[#2563EB] text-white shadow-sm' 
+                  : 'text-[#172033] dark:text-[#CBD5E1] bg-white dark:bg-[#111827] hover:bg-[#F1F5F9] dark:hover:bg-[#1E293B]'
+              }`}
+            >
+              <span className="flex items-center gap-2 truncate"><List size={16} /><span className="truncate">All</span></span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${filter === 'ALL' ? 'bg-white/20 text-white' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8]'}`}>
+                {stats.count}
+              </span>
+            </button>
 
-          <button 
-            onClick={() => setFilter('INVOICE')}
-            aria-label="Filter invoices"
-            className={`w-full flex items-center justify-between px-4 py-3 min-h-[44px] rounded-[10px] text-xs font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-[#60A5FA] ${
-              filter === 'INVOICE' 
-                ? 'bg-[#2563EB] text-white shadow-sm' 
-                : 'text-[#172033] dark:text-[#CBD5E1] hover:bg-white dark:hover:bg-[#111827]'
-            }`}
-          >
-            <span className="flex items-center gap-2.5"><Receipt size={16} /> Invoices</span>
-            <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${filter === 'INVOICE' ? 'bg-white/20 text-white' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8]'}`}>
-              {invoices.filter(i => i.type === 'INVOICE' || i.type === 'RECEIPT').length}
-            </span>
-          </button>
+            <button 
+              onClick={() => setFilter('INVOICE')}
+              aria-label="Filter invoices"
+              className={`flex items-center justify-between px-3 py-2.5 min-h-[44px] rounded-[10px] text-xs font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-[#60A5FA] ${
+                filter === 'INVOICE' 
+                  ? 'bg-[#2563EB] text-white shadow-sm' 
+                  : 'text-[#172033] dark:text-[#CBD5E1] bg-white dark:bg-[#111827] hover:bg-[#F1F5F9] dark:hover:bg-[#1E293B]'
+              }`}
+            >
+              <span className="flex items-center gap-2 truncate"><Receipt size={16} /><span className="truncate">Invoices</span></span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${filter === 'INVOICE' ? 'bg-white/20 text-white' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8]'}`}>
+                {invoices.filter(i => i.type === 'INVOICE' || i.type === 'RECEIPT').length}
+              </span>
+            </button>
 
-          <button 
-            onClick={() => setFilter('CREDIT_INVOICE')}
-            aria-label="Filter credit receipts"
-            className={`w-full flex items-center justify-between px-4 py-3 min-h-[44px] rounded-[10px] text-xs font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-[#60A5FA] ${
-              filter === 'CREDIT_INVOICE' 
-                ? 'bg-[#2563EB] text-white shadow-sm' 
-                : 'text-[#172033] dark:text-[#CBD5E1] hover:bg-white dark:hover:bg-[#111827]'
-            }`}
-          >
-            <span className="flex items-center gap-2.5"><CreditCard size={16} /> Credits</span>
-            <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${filter === 'CREDIT_INVOICE' ? 'bg-white/20 text-white' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8]'}`}>
-              {stats.creditCount}
-            </span>
-          </button>
+            <button 
+              onClick={() => setFilter('CREDIT_INVOICE')}
+              aria-label="Filter credit receipts"
+              className={`flex items-center justify-between px-3 py-2.5 min-h-[44px] rounded-[10px] text-xs font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-[#60A5FA] ${
+                filter === 'CREDIT_INVOICE' 
+                  ? 'bg-[#2563EB] text-white shadow-sm' 
+                  : 'text-[#172033] dark:text-[#CBD5E1] bg-white dark:bg-[#111827] hover:bg-[#F1F5F9] dark:hover:bg-[#1E293B]'
+              }`}
+            >
+              <span className="flex items-center gap-2 truncate"><CreditCard size={16} /><span className="truncate">Credits</span></span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${filter === 'CREDIT_INVOICE' ? 'bg-white/20 text-white' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8]'}`}>
+                {stats.creditCount}
+              </span>
+            </button>
+          </div>
         </div>
+      </div>
 
+      {/* 2. Middle Scrollable Area: Mobile Summary Stats, Search Bar & Receipt Cards */}
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3.5 no-scrollbar">
+        
         {/* Mobile Summary Cards: Total Docs, Total Spent, Total Credits */}
         <div className="grid grid-cols-3 gap-2 md:hidden">
           <div className="bg-white dark:bg-[#111827] p-2.5 rounded-xl border border-[#DCE3EC] dark:border-[#334155] text-center shadow-sm">
@@ -193,7 +199,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             </span>
           </div>
           <div className="bg-white dark:bg-[#111827] p-2.5 rounded-xl border border-[#DCE3EC] dark:border-[#334155] text-center shadow-sm">
-            <span className="text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] uppercase block">Credits</span>
+            <span className="text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] uppercase block font-sans">Credits</span>
             <span className="text-xs font-black text-[#059669] dark:text-[#34D399] truncate block">
               <span className="text-[#F59E0B] font-extrabold mr-0.5">{stats.currency}</span>{stats.creditTotal.toFixed(0)}
             </span>
@@ -220,7 +226,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         )}
 
         {/* Mobile-Only Receipt Cards List */}
-        <div className="space-y-3 md:hidden pt-1">
+        <div className="space-y-3 md:hidden">
           {activeTasks && activeTasks.map(task => (
             <div key={task.id} className="p-3 bg-[#059669]/10 border border-[#059669]/20 rounded-2xl flex items-center justify-between animate-pulse">
               <span className="text-xs font-semibold text-[#172033] dark:text-[#F8FAFC]">Analyzing Receipt...</span>
@@ -245,8 +251,8 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* Bottom Profile & Logout Option with 44px Touch Target and Mobile Safe Area */}
-      <div className="p-4 pb-safe border-t border-[#DCE3EC] dark:border-[#334155] bg-white dark:bg-[#111827] flex items-center justify-between shrink-0 z-20">
+      {/* 3. Fixed Bottom User Profile Bar with Mobile Safe Area */}
+      <div className="p-3.5 pb-safe border-t border-[#DCE3EC] dark:border-[#334155] bg-white dark:bg-[#111827] flex items-center justify-between shrink-0 z-20">
         <button 
           onClick={onOpenAccountModal}
           className="flex items-center gap-2.5 truncate pr-2 text-left focus:outline-none"

@@ -753,7 +753,7 @@ const App: React.FC = () => {
         (state === AppState.IDLE || state === AppState.VIEWING) && (
           <div className="flex-1 flex h-full w-full overflow-hidden">
             {/* Left Panel: Sidebar */}
-            <div className={`h-full w-full md:w-[320px] md:shrink-0 ${state === AppState.IDLE ? 'block' : 'hidden md:block'} flex flex-col`}>
+            <div className={`h-full w-full md:w-[320px] md:shrink-0 ${state === AppState.IDLE ? 'flex' : 'hidden md:flex'} flex-col min-h-0 overflow-hidden`}>
               <Dashboard 
                 invoices={uniqueInvoices}
                 activeTasks={activeTasks}
