@@ -25,12 +25,12 @@ const Barcode: React.FC<BarcodeProps> = ({ value }) => {
   const bars = generateBars(value || "12345678");
 
   return (
-    <div className="flex flex-col items-center select-none opacity-80">
-      <div className="flex items-end h-12 gap-[2px]">
+    <div className="flex flex-col items-center select-none opacity-90">
+      <div className="flex items-end h-12 gap-[2px] p-2 bg-white dark:bg-white/10 rounded-lg shadow-xs">
         {bars.map((width, i) => (
           <div 
             key={i} 
-            className="bg-black rounded-sm"
+            className="bg-black dark:bg-white rounded-xs"
             style={{ 
               width: `${width * 2}px`, 
               height: '100%' 
@@ -38,7 +38,7 @@ const Barcode: React.FC<BarcodeProps> = ({ value }) => {
           />
         ))}
       </div>
-      <div className="text-xs font-mono mt-1 tracking-widest text-slate-500">
+      <div className="text-xs font-mono mt-1.5 tracking-widest text-slate-500 dark:text-slate-300 font-semibold">
         {value || "Unknown ID"}
       </div>
     </div>

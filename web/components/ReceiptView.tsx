@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Share2, CheckCircle, MapPin, Undo2, Eye, X, Trash2, ArrowLeft, Save, Loader2 } from 'lucide-react';
+import { Share2, Download, CheckCircle, MapPin, Undo2, Eye, X, Trash2, ArrowLeft, Save, Loader2 } from 'lucide-react';
 import { InvoiceData } from '../types';
 import Button from './Button';
 import Barcode from './Barcode';
@@ -49,42 +49,67 @@ const ReceiptView: React.FC<ReceiptViewProps> = ({
     ? 'bg-indigo-100 text-[#4F46E5]'
     : 'bg-blue-100 text-[#2563EB]';
 
-  const handleImageShare = async () => {
-    if (!receiptRef.current) return;
-    setIsSharingImage(true);
+  const generateReceiptCanvas = async (): Promise<HTMLCanvasElement | null> => {
+    if (!receiptRef.current) return null;
+    const isDark = document.documentElement.classList.contains('dark');
+    return await html2canvas(receiptRef.current, {
+      scale: 2,
+      backgroundColor: isDark ? '#111827' : '#ffffff',
+      useCORS: true,
+      allowTaint: true,
+      logging: false
+    });
+  };
 
+  const handleExportDownload = async () => {
+    setIsSharingImage(true);
     try {
-      const canvas = await html2canvas(receiptRef.current, {
-        scale: 2,
-        backgroundColor: '#ffffff',
-        useCORS: true,
-        logging: false
-      });
+      const canvas = await generateReceiptCanvas();
+      if (!canvas) throw new Error('Canvas generation failed');
+      const dataUrl = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = `receipt-${data.invoiceNumber || data.id || 'scan'}.png`;
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error("Export failed:", err);
+      alert("Could not export receipt image.");
+    } finally {
+      setIsSharingImage(false);
+    }
+  };
+
+  const handleShare = async () => {
+    setIsSharingImage(true);
+    try {
+      const canvas = await generateReceiptCanvas();
+      if (!canvas) throw new Error('Canvas generation failed');
 
       const blob = await new Promise<Blob | null>(resolve => 
         canvas.toBlob(resolve, 'image/png', 1.0)
       );
 
-      if (!blob) throw new Error('Failed to generate image');
-
-      const file = new File([blob], `invoice-${data.invoiceNumber || 'scan'}.png`, { type: 'image/png' });
       const typeLabel = isCredit ? 'CREDIT INVOICE' : 'Invoice';
 
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          title: `Digitized ${typeLabel}`,
-          text: `Here is the digitized invoice from ${data.storeName}.`,
-          files: [file]
-        });
-      } else {
-        const link = document.createElement('a');
-        link.download = `invoice-${data.invoiceNumber || 'scan'}.png`;
-        link.href = canvas.toDataURL();
-        link.click();
+      if (blob && navigator.share) {
+        const file = new File([blob], `receipt-${data.invoiceNumber || data.id || 'scan'}.png`, { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: `Digitized ${typeLabel}`,
+            text: `Here is the digitized invoice from ${data.storeName || 'Slip Vault'}.`,
+            files: [file]
+          });
+          return;
+        }
       }
+
+      // Fallback to export download if Web Share is unsupported or blocked
+      await handleExportDownload();
     } catch (err) {
-      console.error("Sharing failed", err);
-      alert("Could not export image. Try taking a screenshot manually.");
+      console.error("Share failed, falling back to download:", err);
+      await handleExportDownload();
     } finally {
       setIsSharingImage(false);
     }
@@ -143,7 +168,7 @@ const ReceiptView: React.FC<ReceiptViewProps> = ({
             </div>
         </div>
 
-        {/* Receipt Card - Responsive mobile framing without heavy shadows/border margins on small screens */}
+        {/* Receipt Card */}
         <div ref={receiptRef} className="bg-white dark:bg-[#111827] rounded-2xl md:shadow-xl shadow-sm border border-[#DCE3EC] dark:border-[#334155] overflow-hidden mb-8 animate-[slideUp_0.4s_ease-out] relative">
             {/* Header Section */}
             <div className="p-6 text-center border-b border-dashed border-[#DCE3EC] dark:border-[#334155] bg-white dark:bg-[#111827]">
@@ -275,20 +300,29 @@ const ReceiptView: React.FC<ReceiptViewProps> = ({
       </div>
 
       {/* Footer Actions */}
-      <div className="absolute bottom-0 left-0 w-full bg-white dark:bg-[#111827] border-t border-[#DCE3EC] dark:border-[#334155] p-4 z-20 flex flex-col gap-3">
+      <div className="absolute bottom-0 left-0 w-full bg-white dark:bg-[#111827] border-t border-[#DCE3EC] dark:border-[#334155] p-4 pb-safe z-20 flex flex-col gap-3">
         {isSaved ? (
-          <div className="flex gap-3">
-            <Button onClick={onClose} variant="secondary" className="min-h-[44px] min-w-[44px] px-4" aria-label="Back to receipts">
+          <div className="flex gap-2.5">
+            <Button onClick={onClose} variant="secondary" className="min-h-[44px] min-w-[44px] px-3.5" aria-label="Back to receipts" title="Back">
               <ArrowLeft size={20} aria-hidden="true" />
             </Button>
             <Button 
-              onClick={handleImageShare} 
-              variant="primary" 
+              onClick={handleExportDownload} 
+              variant="secondary" 
               className="flex-1 min-h-[44px]" 
-              icon={isSharingImage ? <Loader2 className="animate-spin" /> : <Share2 size={20} />}
+              icon={<Download size={18} />}
               disabled={isSharingImage}
             >
-              {isSharingImage ? 'Processing...' : 'Export or Share Image'}
+              Export PNG
+            </Button>
+            <Button 
+              onClick={handleShare} 
+              variant="primary" 
+              className="flex-1 min-h-[44px]" 
+              icon={isSharingImage ? <Loader2 className="animate-spin" /> : <Share2 size={18} />}
+              disabled={isSharingImage}
+            >
+              {isSharingImage ? 'Processing...' : 'Share'}
             </Button>
           </div>
         ) : (
