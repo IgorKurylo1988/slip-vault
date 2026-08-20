@@ -83,8 +83,8 @@ const Dashboard: React.FC<DashboardProps> = ({
   return (
     <div className="w-full h-full flex flex-col min-h-0 overflow-hidden bg-[#F8FAFC] dark:bg-[#070B14] border-r border-[#DCE3EC] dark:border-[#334155]">
       
-      {/* 1. Fixed Upper Content: Header, Upload Button & Filter Tabs */}
-      <div className="shrink-0 p-4 md:p-6 space-y-4 border-b border-[#DCE3EC]/50 dark:border-[#334155]/50 bg-[#F8FAFC] dark:bg-[#070B14]">
+      {/* Scrollable Main Section: Top Header, Upload, Filters, Mobile Stats & Receipts List */}
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 space-y-4 no-scrollbar">
         
         {/* App Logo & Title */}
         <div className="flex items-center gap-3">
@@ -181,13 +181,9 @@ const Dashboard: React.FC<DashboardProps> = ({
             </button>
           </div>
         </div>
-      </div>
 
-      {/* 2. Middle Scrollable Area: Mobile Summary Stats, Search Bar & Receipt Cards */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3.5 no-scrollbar">
-        
         {/* Mobile Summary Cards: Total Docs, Total Spent, Total Credits */}
-        <div className="grid grid-cols-3 gap-2 md:hidden">
+        <div className="grid grid-cols-3 gap-2 md:hidden pt-1">
           <div className="bg-white dark:bg-[#111827] p-2.5 rounded-xl border border-[#DCE3EC] dark:border-[#334155] text-center shadow-sm">
             <span className="text-[10px] font-bold text-[#64748B] dark:text-[#94A3B8] uppercase block">Total Docs</span>
             <span className="text-sm font-black text-[#172033] dark:text-[#F8FAFC]">{stats.count}</span>
@@ -251,7 +247,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* 3. Fixed Bottom User Profile Bar with Mobile Safe Area */}
+      {/* Fixed Bottom User Profile Bar with Mobile Safe Area */}
       <div className="p-3.5 pb-safe border-t border-[#DCE3EC] dark:border-[#334155] bg-white dark:bg-[#111827] flex items-center justify-between shrink-0 z-20">
         <button 
           onClick={onOpenAccountModal}
