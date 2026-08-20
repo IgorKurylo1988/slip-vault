@@ -204,31 +204,48 @@ const AdminBoard: React.FC<AdminBoardProps> = ({ onClose, onViewInvoice }) => {
     <div className="w-full h-full bg-[#F8FAFC] dark:bg-[#070B14] flex flex-col overflow-hidden text-[#172033] dark:text-[#F8FAFC]">
       
       {/* Admin Navigation Header */}
-      <header className="bg-[#111827] border-b border-[#334155] py-4 px-6 shadow-md flex items-center justify-between gap-4 shrink-0 text-white">
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={onClose}
-            aria-label="Exit Admin Board"
-            className="w-[44px] h-[44px] rounded-[10px] bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
-            title="Return to User View"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <div>
-            <div className="flex items-center gap-2">
-              <ShieldAlert size={18} className="text-[#F59E0B]" />
-              <h1 className="text-lg font-black tracking-tight text-white">Admin Management Board</h1>
+      <header className="bg-[#111827] border-b border-[#334155] py-3.5 px-4 md:px-6 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 text-white">
+        <div className="flex items-center justify-between sm:justify-start gap-3 w-full sm:w-auto">
+          <div className="flex items-center gap-3 min-w-0">
+            <button 
+              onClick={onClose}
+              aria-label="Exit Admin Board"
+              className="w-[44px] h-[44px] min-w-[44px] min-h-[44px] rounded-[10px] bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-[#60A5FA] shrink-0"
+              title="Return to User View"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <ShieldAlert size={18} className="text-[#F59E0B] shrink-0" />
+                <h1 className="text-base sm:text-lg font-black tracking-tight text-white truncate">Admin Board</h1>
+              </div>
+              <p className="text-[11px] sm:text-xs text-[#94A3B8] truncate hidden xs:block">System & User Control Panel</p>
             </div>
-            <p className="text-xs text-[#94A3B8]">System-wide Database & User Control Panel</p>
+          </div>
+
+          <div className="flex items-center gap-2 sm:hidden shrink-0">
+            <button 
+              onClick={fetchAdminData} 
+              disabled={loading}
+              aria-label="Refresh admin data"
+              className="w-[44px] h-[44px] min-w-[44px] min-h-[44px] rounded-[10px] bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
+              title="Refresh System Data"
+            >
+              <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+            </button>
+            <Button onClick={onClose} variant="secondary" className="min-h-[44px] text-xs px-3">
+              Exit
+            </Button>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="hidden sm:flex items-center gap-3">
           <button 
             onClick={fetchAdminData} 
             disabled={loading}
             aria-label="Refresh admin data"
-            className="w-[44px] h-[44px] rounded-[10px] bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
+            className="w-[44px] h-[44px] min-w-[44px] min-h-[44px] rounded-[10px] bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
             title="Refresh System Data"
           >
             <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
@@ -240,7 +257,7 @@ const AdminBoard: React.FC<AdminBoardProps> = ({ onClose, onViewInvoice }) => {
       </header>
 
       {/* Main Admin Scrollable Container */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 no-scrollbar">
         
         {error ? (
           <div className="bg-[#DC2626]/10 border border-[#DC2626]/30 text-[#DC2626] dark:text-[#F87171] p-6 rounded-2xl flex flex-col items-center text-center max-w-md mx-auto">
@@ -300,17 +317,17 @@ const AdminBoard: React.FC<AdminBoardProps> = ({ onClose, onViewInvoice }) => {
             </div>
 
             {/* Main Admin Section View Switcher */}
-            <div className="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-[#DCE3EC] dark:border-[#334155] shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
-              <div className="flex gap-2 w-full md:w-auto">
+            <div className="bg-white dark:bg-[#111827] p-3.5 sm:p-4 rounded-2xl border border-[#DCE3EC] dark:border-[#334155] shadow-sm flex flex-col md:flex-row justify-between items-center gap-3 sm:gap-4">
+              <div className="flex flex-wrap sm:flex-nowrap gap-2 w-full md:w-auto">
                 <button
                   onClick={() => setActiveTab('RECEIPTS')}
-                  className={`flex-1 md:flex-initial px-5 py-2.5 min-h-[44px] rounded-[10px] text-xs font-bold transition-all flex items-center gap-2 ${activeTab === 'RECEIPTS' ? 'bg-[#2563EB] text-white shadow-sm' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8]'}`}
+                  className={`flex-1 md:flex-initial px-3.5 sm:px-5 py-2.5 min-h-[44px] rounded-[10px] text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'RECEIPTS' ? 'bg-[#2563EB] text-white shadow-sm' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8]'}`}
                 >
                   <FileText size={16} /> System Receipts ({invoices.length})
                 </button>
                 <button
                   onClick={() => setActiveTab('USERS')}
-                  className={`flex-1 md:flex-initial px-5 py-2.5 min-h-[44px] rounded-[10px] text-xs font-bold transition-all flex items-center gap-2 ${activeTab === 'USERS' ? 'bg-[#2563EB] text-white shadow-sm' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8]'}`}
+                  className={`flex-1 md:flex-initial px-3.5 sm:px-5 py-2.5 min-h-[44px] rounded-[10px] text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'USERS' ? 'bg-[#2563EB] text-white shadow-sm' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8]'}`}
                 >
                   <Users size={16} /> Registered Users ({users.length})
                 </button>
@@ -326,7 +343,11 @@ const AdminBoard: React.FC<AdminBoardProps> = ({ onClose, onViewInvoice }) => {
                   className="w-full h-11 pl-10 pr-10 bg-[#F1F5F9] dark:bg-[#1E293B] border border-[#DCE3EC] dark:border-[#334155] rounded-[10px] text-xs focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
                 />
                 {searchQuery && (
-                  <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748B]">
+                  <button 
+                    onClick={() => setSearchQuery('')} 
+                    aria-label="Clear admin search"
+                    className="w-[44px] h-[44px] min-w-[44px] min-h-[44px] absolute right-0 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#172033] dark:text-[#94A3B8] dark:hover:text-[#F8FAFC] flex items-center justify-center focus:outline-none"
+                  >
                     <X size={16} />
                   </button>
                 )}
@@ -336,24 +357,24 @@ const AdminBoard: React.FC<AdminBoardProps> = ({ onClose, onViewInvoice }) => {
             {/* TAB 1: SYSTEM RECEIPTS MANAGEMENT TABLE */}
             {activeTab === 'RECEIPTS' && (
               <div className="bg-white dark:bg-[#111827] rounded-2xl border border-[#DCE3EC] dark:border-[#334155] shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-[#DCE3EC] dark:border-[#334155] flex justify-between items-center bg-[#F8FAFC]/50 dark:bg-[#111827]">
+                <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-[#DCE3EC] dark:border-[#334155] flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#F8FAFC]/50 dark:bg-[#111827]">
                   <h2 className="text-sm font-bold text-[#172033] dark:text-[#F8FAFC]">System Receipts Registry</h2>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-1.5 overflow-x-auto no-scrollbar">
                     <button 
                       onClick={() => setFilter('ALL')}
-                      className={`px-3 py-1 text-xs rounded-full font-semibold ${filter === 'ALL' ? 'bg-[#2563EB] text-white' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B]'}`}
+                      className={`px-3.5 py-1.5 min-h-[36px] sm:min-h-[40px] text-xs rounded-full font-semibold inline-flex items-center focus:outline-none focus:ring-2 focus:ring-[#60A5FA] ${filter === 'ALL' ? 'bg-[#2563EB] text-white' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B]'}`}
                     >
                       All ({invoices.length})
                     </button>
                     <button 
                       onClick={() => setFilter('INVOICE')}
-                      className={`px-3 py-1 text-xs rounded-full font-semibold ${filter === 'INVOICE' ? 'bg-[#2563EB] text-white' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B]'}`}
+                      className={`px-3.5 py-1.5 min-h-[36px] sm:min-h-[40px] text-xs rounded-full font-semibold inline-flex items-center focus:outline-none focus:ring-2 focus:ring-[#60A5FA] ${filter === 'INVOICE' ? 'bg-[#2563EB] text-white' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B]'}`}
                     >
                       Invoices ({invoices.filter(i => i.type === 'INVOICE' || i.type === 'RECEIPT').length})
                     </button>
                     <button 
                       onClick={() => setFilter('CREDIT_INVOICE')}
-                      className={`px-3 py-1 text-xs rounded-full font-semibold ${filter === 'CREDIT_INVOICE' ? 'bg-[#2563EB] text-white' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B]'}`}
+                      className={`px-3.5 py-1.5 min-h-[36px] sm:min-h-[40px] text-xs rounded-full font-semibold inline-flex items-center focus:outline-none focus:ring-2 focus:ring-[#60A5FA] ${filter === 'CREDIT_INVOICE' ? 'bg-[#2563EB] text-white' : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B]'}`}
                     >
                       Credits ({invoices.filter(i => i.type === 'CREDIT_INVOICE').length})
                     </button>
@@ -392,7 +413,7 @@ const AdminBoard: React.FC<AdminBoardProps> = ({ onClose, onViewInvoice }) => {
                             <td className="px-6 py-4 font-semibold text-[#172033] dark:text-[#F8FAFC]">
                               <button 
                                 onClick={() => onViewInvoice(inv)} 
-                                className="hover:underline text-left"
+                                className="min-h-[44px] inline-flex items-center hover:underline text-left focus:outline-none focus:ring-2 focus:ring-[#60A5FA] rounded"
                               >
                                 {inv.storeName || 'Unknown Store'}
                               </button>

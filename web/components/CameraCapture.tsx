@@ -80,7 +80,8 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel }) =>
       <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-10 bg-gradient-to-b from-black/60 to-transparent">
         <button 
           onClick={onCancel} 
-          className="p-2 rounded-full bg-white/10 text-white backdrop-blur-md hover:bg-white/20 transition-colors"
+          aria-label="Close camera"
+          className="w-[44px] h-[44px] min-w-[44px] min-h-[44px] rounded-full bg-white/10 text-white backdrop-blur-md hover:bg-white/20 transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
         >
           <X size={24} />
         </button>

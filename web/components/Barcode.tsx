@@ -38,7 +38,7 @@ const Barcode: React.FC<BarcodeProps> = ({ value }) => {
           />
         ))}
       </div>
-      <div className="text-xs font-mono mt-1.5 tracking-widest text-slate-500 dark:text-slate-300 font-semibold">
+      <div className="text-xs font-mono mt-1.5 tracking-widest text-slate-500 dark:text-slate-300 font-semibold max-w-full truncate break-all px-2 text-center">
         {value || "Unknown ID"}
       </div>
     </div>

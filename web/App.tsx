@@ -570,14 +570,14 @@ const App: React.FC = () => {
                 required
               />
               {!isRegistering && (
-                <div className="flex justify-end mt-1">
+                <div className="flex justify-end mt-0.5">
                   <button
                     type="button"
                     onClick={() => {
                       setForgotPasswordEmail(authEmail);
                       setIsForgotPasswordOpen(true);
                     }}
-                    className="text-xs font-semibold text-[#60A5FA] hover:underline"
+                    className="min-h-[44px] inline-flex items-center text-xs font-semibold text-[#60A5FA] hover:underline focus:outline-none"
                   >
                     Forgot Password?
                   </button>
@@ -597,7 +597,7 @@ const App: React.FC = () => {
             </Button>
           </form>
           
-          <div className="text-center mt-6 pt-4 border-t border-[#334155]">
+          <div className="text-center mt-4 pt-3 border-t border-[#334155]">
             <button 
               onClick={() => {
                 setIsRegistering(!isRegistering);
@@ -607,7 +607,7 @@ const App: React.FC = () => {
                 setAuthLastName("");
                 setAuthError(null);
               }}
-              className="text-xs font-semibold text-[#2563EB] hover:text-[#4F46E5] transition-colors p-2"
+              className="min-h-[44px] w-full inline-flex items-center justify-center text-xs font-semibold text-[#2563EB] hover:text-[#4F46E5] transition-colors p-2 focus:outline-none"
             >
               {isRegistering ? "Already have an account? Log In" : "New to Receipt Vault? Create Account"}
             </button>

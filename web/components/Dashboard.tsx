@@ -211,10 +211,14 @@ const Dashboard: React.FC<DashboardProps> = ({
               placeholder="Search stores, date, invoice #..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-10 pl-9 pr-8 bg-white dark:bg-[#111827] border border-[#DCE3EC] dark:border-[#334155] rounded-[10px] text-xs text-[#172033] dark:text-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
+              className="w-full h-11 pl-9 pr-10 bg-white dark:bg-[#111827] border border-[#DCE3EC] dark:border-[#334155] rounded-[10px] text-xs text-[#172033] dark:text-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-[#60A5FA]"
             />
             {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#64748B]">
+              <button 
+                onClick={() => setSearchQuery('')} 
+                aria-label="Clear search input"
+                className="w-[44px] h-[44px] min-w-[44px] min-h-[44px] absolute right-0 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#172033] dark:text-[#94A3B8] dark:hover:text-[#F8FAFC] flex items-center justify-center focus:outline-none"
+              >
                 <X size={14} />
               </button>
             )}
@@ -251,7 +255,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       <div className="p-3.5 pb-safe border-t border-[#DCE3EC] dark:border-[#334155] bg-white dark:bg-[#111827] flex items-center justify-between shrink-0 z-20">
         <button 
           onClick={onOpenAccountModal}
-          className="flex items-center gap-2.5 truncate pr-2 text-left focus:outline-none"
+          className="flex items-center gap-2.5 min-h-[44px] truncate pr-2 text-left focus:outline-none focus:ring-2 focus:ring-[#60A5FA] rounded-lg"
           title="Open Account Settings"
         >
           <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#2563EB] to-[#4F46E5] text-white flex items-center justify-center font-black text-xs tracking-wider shrink-0 uppercase shadow-sm">

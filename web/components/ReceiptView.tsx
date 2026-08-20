@@ -302,27 +302,27 @@ const ReceiptView: React.FC<ReceiptViewProps> = ({
       {/* Footer Actions */}
       <div className="absolute bottom-0 left-0 w-full bg-white dark:bg-[#111827] border-t border-[#DCE3EC] dark:border-[#334155] p-4 pb-safe z-20 flex flex-col gap-3">
         {isSaved ? (
-          <div className="flex gap-2.5">
-            <Button onClick={onClose} variant="secondary" className="min-h-[44px] min-w-[44px] px-3.5" aria-label="Back to receipts" title="Back">
+          <div className="flex gap-2">
+            <Button onClick={onClose} variant="secondary" className="min-h-[44px] min-w-[44px] px-3 shrink-0" aria-label="Back to receipts" title="Back">
               <ArrowLeft size={20} aria-hidden="true" />
             </Button>
             <Button 
               onClick={handleExportDownload} 
               variant="secondary" 
-              className="flex-1 min-h-[44px]" 
+              className="flex-1 min-h-[44px] px-2 text-xs sm:text-sm" 
               icon={<Download size={18} />}
               disabled={isSharingImage}
             >
-              Export PNG
+              <span className="truncate">Export PNG</span>
             </Button>
             <Button 
               onClick={handleShare} 
               variant="primary" 
-              className="flex-1 min-h-[44px]" 
+              className="flex-1 min-h-[44px] px-2 text-xs sm:text-sm" 
               icon={isSharingImage ? <Loader2 className="animate-spin" /> : <Share2 size={18} />}
               disabled={isSharingImage}
             >
-              {isSharingImage ? 'Processing...' : 'Share'}
+              <span className="truncate">{isSharingImage ? 'Processing...' : 'Share'}</span>
             </Button>
           </div>
         ) : (

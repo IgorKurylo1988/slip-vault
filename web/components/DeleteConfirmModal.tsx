@@ -90,12 +90,12 @@ const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
             />
           </div>
 
-          <div className="flex gap-3 pt-2">
+          <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
             <Button
               type="button"
               onClick={onCancel}
               variant="secondary"
-              className="flex-1 min-h-[44px]"
+              className="w-full sm:flex-1 min-h-[44px]"
               disabled={isDeleting}
             >
               Cancel
@@ -103,7 +103,7 @@ const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
             <Button
               type="submit"
               variant="danger"
-              className="flex-1 min-h-[44px]"
+              className="w-full sm:flex-1 min-h-[44px]"
               disabled={!isMatched || isDeleting}
               icon={isDeleting ? <Loader2 className="animate-spin" /> : <Trash2 size={18} />}
             >
